@@ -261,7 +261,13 @@ async function bootstrap(){
     if(fc && Date.now()-fc.t < 24*3600*1000 && Array.isArray(fc.d) && fc.d.length){ FABRICS = fc.d; }
     else{
       loading(true, "Loading fabric list…");
-      const rows = await api("/rest/v1/fabrics?select=fabric_code,roll_width_cm&order=fabric_code&limit=10000");
+      const rows = [];
+      for(let off=0;;off+=1000){                       // PostgREST caps at 1000 rows/request
+        const page = await api("/rest/v1/fabrics?select=fabric_code,roll_width_cm&order=fabric_code",
+          {headers:{"Range": off+"-"+(off+999)}});
+        rows.push(...(page||[]));
+        if(!page || page.length<1000) break;
+      }
       FABRICS = rows.map(r=>({c:r.fabric_code, w:r.roll_width_cm?Number(r.roll_width_cm):null}));
       try{ localStorage.setItem("pfc_fabrics_v1", JSON.stringify({t:Date.now(), d:FABRICS})); }catch(e){}
     }
