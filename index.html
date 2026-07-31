@@ -252,7 +252,8 @@ const PHOTO_MAX_PX = 1280;           // downscale before upload — salespeople 
 const CEILING_MATERIALS = ["Gypsum","Concrete","Marble","Wood","Other"];
 const WINDOW_SHAPES = ["Straight","Curved","L-shape","Bay"];
 const SIDES = ["Left","Right","Both"];
-const TIEBACK_FINISHES = ["Gold","Nickel","White"];
+const TIEBACK_FINISHES = ["Gold","Nickel","Silver"];
+const TRACK_COLOURS = ["White","Black"];   // Black carries a surcharge — see ADD-TRKB
 const EXISTING_TYPES = ["Curtains","Blinds","Track only"];
 
 /* ================= STATE ================= */
@@ -446,6 +447,7 @@ function windowAddons(w){
   if(a.returns>0) push("ADD-RET", a.returns);
   if(a.bend>0) push("ADD-BND", a.bend);
   if(a.velcro) push("ADD-VEL",1);
+  if(w.track_color==="Black") push("ADD-TRKB",1);   // black track carries a per-metre surcharge
   // tie belt is its own choice, not an add-on count
   if(w.tie_belt==="velcro") push("ADD-TIEV",1);
   else if(w.tie_belt==="hooks") push("ADD-TIE",1);
@@ -903,7 +905,8 @@ function drawWinEditor(){
       <div class="hint">How much the two panels overlap in the middle.</div>`:""}`:""}
       ${isCurtain?`
       <label class="f">Track colour</label>
-      <div class="chips" id="w_track">${["White","Black","Grey"].map(c=>`<div class="chip ${w.track_color===c?"on":""}" data-t="${c}">${c}</div>`).join("")}</div>
+      <div class="chips" id="w_track">${TRACK_COLOURS.map(c=>`<div class="chip ${w.track_color===c?"on":""}" data-t="${c}">${c}${c==="Black"?" +AED 40/m":""}</div>`).join("")}</div>
+      ${w.track_color==="Black"&&w.width_cm?`<div class="hint">Black track: AED 40 × ${Math.max(+w.width_cm,100)/100} m = <b>${fmt0(40*Math.max(+w.width_cm,100)/100)}</b></div>`:`<div class="hint">White track is free. Black track adds AED 40 per metre of width.</div>`}
 
       <label class="f">Tie belt</label>
       <div class="seg" id="w_tie">
