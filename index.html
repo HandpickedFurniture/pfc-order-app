@@ -446,7 +446,9 @@ function windowAddons(w){
   if(a.returns>0) push("ADD-RET", a.returns);
   if(a.bend>0) push("ADD-BND", a.bend);
   if(a.velcro) push("ADD-VEL",1);
-  if(a.tie>0) push("ADD-TIE", a.tie);
+  // tie belt is its own choice, not an add-on count
+  if(w.tie_belt==="velcro") push("ADD-TIEV",1);
+  else if(w.tie_belt==="hooks") push("ADD-TIE",1);
   if(a.removal) push("ADD-REM",1);
   if(a.alteration>0) push("ADD-ALT", a.alteration);
   return out;
@@ -647,7 +649,8 @@ function renderStep2(){
 function blankWin(){
   return { window_name:"W"+(state.windows.length+1), room:"", style:"", layer:"",
     width_cm:"", height_cm:"", pooling_cm:0, fixing:"", opening:"", track_color:"",
-    fabric_sheer:"", fabric_blackout:"", addons:{stick:0,returns:0,bend:0,tie:0,alteration:0}, notes:"",
+    fabric_sheer:"", fabric_blackout:"", addons:{stick:0,returns:0,bend:0,alteration:0}, notes:"",
+    tie_belt:"",                       // "" | "velcro" | "hooks"
     // coverage geometry — width_cm/height_cm are always the DERIVED totals
     coverage:"wall_to_wall", base_width_cm:"", left_extra_cm:0, right_extra_cm:0,
     base_height_cm:"", top_extra_cm:0,
@@ -667,6 +670,9 @@ function normalizeWin(w){
   for(const k in d){ if(w[k]===undefined) w[k] = d[k]; }
   w.addons = w.addons || {};
   if(!Array.isArray(w.photos)) w.photos = [];
+  // tie belt used to be an add-on count; carry an older draft over to the new choice
+  if(!w.tie_belt && +w.addons.tie > 0) w.tie_belt = "hooks";
+  delete w.addons.tie;
   // pre-coverage windows stored only width_cm/height_cm — treat those as the base measurement
   if(w.base_width_cm==="" && w.width_cm!=="") w.base_width_cm = w.width_cm;
   if(w.base_height_cm==="" && w.height_cm!=="") w.base_height_cm = w.height_cm;
@@ -789,8 +795,8 @@ function drawWinEditor(){
   const nSet = keys => keys.filter(k=>{
     const v = w[k]; return v!==""&&v!=null&&v!==false&&v!==0; }).length;
   const siteCount = nSet(["ceiling_material","skirting_height_cm","pocket_depth_cm","window_shape"]);
-  const finCount = nSet(["tieback_finish","tieback_side","motor_side","socket_nearby",
-    "trunking_needed","existing_covering","existing_action","fullness_override"]);
+  const finCount = nSet(["motor_side","socket_nearby","trunking_needed",
+    "existing_covering","existing_action","fullness_override"]);
 
   const html = `
   <div class="overlay" id="winov">
@@ -897,7 +903,19 @@ function drawWinEditor(){
       <div class="hint">How much the two panels overlap in the middle.</div>`:""}`:""}
       ${isCurtain?`
       <label class="f">Track colour</label>
-      <div class="chips" id="w_track">${["White","Black","Grey"].map(c=>`<div class="chip ${w.track_color===c?"on":""}" data-t="${c}">${c}</div>`).join("")}</div>`:""}
+      <div class="chips" id="w_track">${["White","Black","Grey"].map(c=>`<div class="chip ${w.track_color===c?"on":""}" data-t="${c}">${c}</div>`).join("")}</div>
+
+      <label class="f">Tie belt</label>
+      <div class="seg" id="w_tie">
+        <button data-tb="" class="${!w.tie_belt?"on":""}">No tie belt</button>
+        <button data-tb="velcro" class="${w.tie_belt==="velcro"?"on":""}">Velcro</button>
+        <button data-tb="hooks" class="${w.tie_belt==="hooks"?"on":""}">With hooks</button>
+      </div>
+      <div class="hint">Free of charge, in the same fabric as the curtain.</div>
+      ${w.tie_belt?`
+      <label class="f">Which side?</label>
+      ${chipRow("tieback_side", SIDES)}
+      ${w.tie_belt==="hooks"?`<label class="f">Hook finish</label>${chipRow("tieback_finish", TIEBACK_FINISHES)}`:""}`:""}`:""}
     </div>
 
     <div class="card">
@@ -934,7 +952,6 @@ function drawWinEditor(){
             <div class="qv">${+w.velcro_middle_pieces||0}</div><button data-inc="velcro_middle_pieces">＋</button></div>
           </div>
         </div>`:""}
-        ${addonStep("tie","ADD-TIE","per curtain")}
         ${addonToggle("removal","ADD-REM")}
         ${addonStep("alteration","ADD-ALT","per curtain")}
       </div>
@@ -963,12 +980,6 @@ function drawWinEditor(){
       <div class="hd" data-acc="finish"><span>🧷 Finishing details (optional)</span>
         <span class="ar">${finCount?finCount+" set":"none"} ${accOpen.finish?"▲":"▼"}</span></div>
       <div class="bd">
-        ${w.addons&&w.addons.tie?`
-        <label class="f">Tie-back finish</label>
-        ${chipRow("tieback_finish", TIEBACK_FINISHES)}
-        <label class="f">Tie-back side</label>
-        ${chipRow("tieback_side", SIDES)}`:""}
-
         ${w.addons&&w.addons.motor?`
         <label class="f">Motor side</label>
         ${chipRow("motor_side", ["Left","Right"])}
@@ -1064,6 +1075,11 @@ function drawWinEditor(){
   const wf = $("#w_fix"); wf.querySelectorAll("button").forEach(b=>b.onclick=()=>{ grab(); w.fixing=b.dataset.f; drawWinEditor(); });
   const wo = $("#w_open"); if(wo) wo.querySelectorAll("button").forEach(b=>b.onclick=()=>{ grab(); w.opening=b.dataset.o; drawWinEditor(); });
   const wt = $("#w_track"); if(wt) wt.querySelectorAll(".chip").forEach(c=>c.onclick=()=>{ grab(); w.track_color=c.dataset.t; drawWinEditor(); });
+  const wtb = $("#w_tie"); if(wtb) wtb.querySelectorAll("button").forEach(b=>b.onclick=()=>{
+    grab(); w.tie_belt = b.dataset.tb;
+    if(!w.tie_belt){ w.tieback_side=""; w.tieback_finish=""; }
+    if(w.tie_belt!=="hooks") w.tieback_finish="";
+    drawWinEditor(); });
   $("#winov").querySelectorAll("[data-tg]").forEach(b=>b.onclick=()=>{ grab();
     const k=b.dataset.tg; w.addons[k]=!w.addons[k]; drawWinEditor(); });
   $("#winov").querySelectorAll("[data-sp]").forEach(b=>b.onclick=()=>{ grab();
@@ -1284,6 +1300,7 @@ async function submitOrder(){
         window_shape: w.window_shape||null,
         velcro_side: w.velcro_side||null,
         velcro_middle_pieces: +w.velcro_middle_pieces||0,
+        tie_belt_type: w.tie_belt||null,
         tieback_finish: w.tieback_finish||null,
         tieback_side: w.tieback_side||null,
         motor_side: w.motor_side||null,
