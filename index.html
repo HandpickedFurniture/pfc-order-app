@@ -159,6 +159,30 @@
   .gpsbox{display:flex;gap:10px;align-items:center;}
   .gpsbox .st{flex:1;font-size:14px;color:var(--muted);}
   .gpsbox .st.ok{color:var(--ok);font-weight:700;}
+
+  /* two numeric inputs side by side */
+  .two{display:flex;gap:10px;}
+  .two > div{flex:1;min-width:0;}
+  .two label.f{margin-top:10px;}
+  /* total-width / total-height callout */
+  .totbox{background:#eef7ef;border:1.5px solid var(--ok);border-radius:10px;padding:11px 12px;
+    margin-top:10px;font-size:15px;font-weight:700;color:var(--brand-dark);text-align:center;}
+  .totbox small{display:block;font-weight:500;color:var(--muted);font-size:12.5px;margin-top:2px;}
+  /* collapsible optional sections */
+  .acc{border:1.5px solid var(--line);border-radius:12px;margin-top:12px;overflow:hidden;background:#fff;}
+  .acc > .hd{display:flex;justify-content:space-between;align-items:center;padding:14px 14px;
+    font-weight:700;font-size:15px;cursor:pointer;color:var(--brand-dark);}
+  .acc > .hd .ar{color:var(--muted);font-size:13px;font-weight:600;}
+  .acc > .bd{padding:0 14px 14px;border-top:1px solid var(--line);}
+  .acc.shut > .bd{display:none;}
+  /* photos */
+  .photos{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;}
+  .photos .ph{position:relative;width:78px;height:78px;border-radius:10px;overflow:hidden;border:1.5px solid var(--line);}
+  .photos .ph img{width:100%;height:100%;object-fit:cover;display:block;}
+  .photos .ph button{position:absolute;top:2px;right:2px;width:22px;height:22px;border:none;border-radius:50%;
+    background:rgba(0,0,0,.6);color:#fff;font-size:13px;line-height:22px;padding:0;cursor:pointer;}
+  .cambtn{width:100%;padding:14px;border:1.5px dashed var(--brand);border-radius:12px;background:#f4f9fb;
+    font-size:15.5px;font-weight:600;color:var(--brand);cursor:pointer;}
 </style>
 </head>
 <body>
@@ -209,6 +233,13 @@ const STYLE_META = {
 };
 const LAYER_NAMES = {sheer:"Sheer only", blackout:"Blackout only", sheer_blackout:"Sheer + Blackout"};
 const ROOMS = ["Living Room","Master Bedroom","Bedroom 2","Bedroom 3","Kids Room","Majlis","Dining","Kitchen","Office","Balcony Door","Other"];
+const PHOTO_BUCKET = "window-photos";
+const PHOTO_MAX_PX = 1280;           // downscale before upload — salespeople are on mobile data
+const CEILING_MATERIALS = ["Gypsum","Concrete","Marble","Wood","Other"];
+const WINDOW_SHAPES = ["Straight","Curved","L-shape","Bay"];
+const SIDES = ["Left","Right","Both"];
+const TIEBACK_FINISHES = ["Gold","Nickel","White"];
+const EXISTING_TYPES = ["Curtains","Blinds","Track only"];
 
 /* ================= STATE ================= */
 let CATALOG = [];            // active product rows
@@ -218,11 +249,13 @@ let state = {
   step: 1,
   customer_name:"", customer_phone:"", salesperson:"",
   gps:null, location_url:"", installation_date:"", address:"",
+  floor_number:"", lift_available:null,
   advance_amount:"", payment_mode:"", notes:"",
   windows: []
 };
 let editWin = null;          // window being edited (copy)
 let editIdx = -1;
+let accOpen = {site:false, finish:false};   // optional sections stay collapsed by default
 
 /* ================= HELPERS ================= */
 const $ = s => document.querySelector(s);
@@ -244,6 +277,39 @@ async function api(path, opts={}) {
     try{ const j = await r.json(); m = j.message || j.hint || j.error || m; }catch(e){}
     throw new Error(m); }
   const txt = await r.text(); return txt ? JSON.parse(txt) : null;
+}
+
+/* ================= PHOTOS ================= */
+// Shrink on-device before upload — a raw phone photo is ~4 MB and would stall the form on mobile data.
+function downscaleImage(file){
+  return new Promise((resolve,reject)=>{
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = ()=>{
+      URL.revokeObjectURL(url);
+      const scale = Math.min(1, PHOTO_MAX_PX/Math.max(img.width, img.height));
+      const cw = Math.max(1,Math.round(img.width*scale)), ch = Math.max(1,Math.round(img.height*scale));
+      const c = document.createElement("canvas"); c.width=cw; c.height=ch;
+      c.getContext("2d").drawImage(img,0,0,cw,ch);
+      c.toBlob(b=> b ? resolve(b) : reject(new Error("could not process image")), "image/jpeg", 0.7);
+    };
+    img.onerror = ()=>{ URL.revokeObjectURL(url); reject(new Error("could not read image")); };
+    img.src = url;
+  });
+}
+
+async function uploadPhoto(file){
+  const blob = await downscaleImage(file);
+  const name = Date.now()+"_"+Math.random().toString(36).slice(2,8)+".jpg";
+  const path = PHOTO_BUCKET+"/"+name;
+  const r = await fetch(SB_URL+"/storage/v1/object/"+path, {
+    method:"POST",
+    headers:{"apikey":SB_KEY, "Authorization":"Bearer "+SB_KEY, "Content-Type":"image/jpeg"},
+    body: blob });
+  if(!r.ok){ let m="upload failed ("+r.status+")";
+    try{ const j=await r.json(); m=j.message||j.error||m; }catch(e){}
+    throw new Error(m); }
+  return SB_URL+"/storage/v1/object/public/"+path;
 }
 
 /* ================= DATA LOAD ================= */
@@ -273,7 +339,9 @@ async function bootstrap(){
     }
     // restore draft
     try{ const d = JSON.parse(localStorage.getItem("pfc_draft_v1")||"null");
-      if(d && d.windows){ state = {...state, ...d, step: d.step||1}; } }catch(e){}
+      if(d && d.windows){ state = {...state, ...d, step: d.step||1};
+        // drafts saved by an older build lack the coverage keys — migrate them in place
+        state.windows = (state.windows||[]).map(w=>applyGeometry(normalizeWin(w))); } }catch(e){}
     const lastSp = localStorage.getItem("pfc_salesperson");
     if(lastSp && !state.salesperson) state.salesperson = lastSp;
   }catch(e){ toast("Could not load data: "+e.message); }
@@ -308,9 +376,9 @@ function rollWidthOf(code){ if(!code) return null;
 // Fabric needed for ONE layer of a window (metres). Mirrors production panel-plan logic:
 // railroaded when roll width > fabric height + 22cm; else vertical panels of (height+22cm).
 // +16cm sewing allowance on gathered width, +1m safety always added.
-function fabricMeters(style, widthCm, heightCm, poolingCm, rollCm){
+function fabricMeters(style, widthCm, heightCm, poolingCm, rollCm, fullnessOverride){
   if(!widthCm || !heightCm) return 0;
-  const mult = FULLNESS[style] ?? 2.2;
+  const mult = (+fullnessOverride > 0) ? +fullnessOverride : (FULLNESS[style] ?? 2.2);
   const roll = rollCm || DEFAULT_ROLL_CM;
   const hFab = Math.max(heightCm + (poolingCm||0), 30);
   const gatheredW = widthCm * mult;
@@ -330,7 +398,7 @@ function windowFabrics(w){
     const code = lay==="sheer" ? w.fabric_sheer : w.fabric_blackout;
     const roll = rollWidthOf(code);
     out.push({layer:lay, code:code||null, roll:roll,
-      meters: fabricMeters(w.style, +w.width_cm, +w.height_cm, +w.pooling_cm||0, roll)});
+      meters: fabricMeters(w.style, +w.width_cm, +w.height_cm, +w.pooling_cm||0, roll, w.fullness_override)});
   }
   return out;
 }
@@ -377,6 +445,24 @@ function windowPrice(w){
   const list = windowAddons(w);
   const addons = r2(list.reduce((s,x)=>s+x.amount,0));
   return {base, addons, total:r2(base+addons), list};
+}
+
+// Human-readable summary of how the total width was reached, so it can be checked at a glance.
+function coverageNote(w){
+  const bits = [];
+  if(w.coverage==="window_width"){
+    const lx=+w.left_extra_cm||0, rx=+w.right_extra_cm||0;
+    bits.push(`Window width ${+w.base_width_cm||0}` + (lx||rx?` + ${lx} left + ${rx} right = <b>${w.width_cm} cm</b>`:` cm (no side extra)`));
+  } else if(w.coverage==="inside_frame"){ bits.push("Inside frame"); }
+  else { bits.push("Wall to wall"); }
+  if(w.fixing==="Wall" && +w.top_extra_cm>0) bits.push(`+${+w.top_extra_cm} cm above window`);
+  if(w.uneven){
+    const hs=[w.height_left_cm,w.height_middle_cm,w.height_right_cm].map(x=>+x).filter(x=>x>0);
+    if(hs.length>1) bits.push(`uneven ${hs.join("/")} → ${Math.min(...hs)}`);
+  }
+  if(w.measured_by==="customer") bits.push("⚠️ customer's sizes");
+  if(+w.fullness_override>0) bits.push(`gather ${+w.fullness_override}×`);
+  return bits.join(" · ");
 }
 
 function orderTotals(){
@@ -447,10 +533,25 @@ function renderStep1(){
     </div>
     <label class="f">Address / Area (optional)</label>
     <input type="text" id="f_addr" placeholder="e.g. International City, England Cluster X22" value="${esc(state.address)}">
+    <div class="two">
+      <div><label class="f">Floor (optional)</label>
+        <input type="text" id="f_floor" placeholder="e.g. Ground, 12" value="${esc(state.floor_number||"")}"></div>
+      <div><label class="f">Lift available?</label>
+        <div class="seg" id="f_lift" style="margin-top:6px">
+          <button data-v="1" class="${state.lift_available===true?"on":""}">Yes</button>
+          <button data-v="0" class="${state.lift_available===false?"on":""}">No</button>
+        </div></div>
+    </div>
     <label class="f">Intended installation date (optional)</label>
     <input type="date" id="f_inst" min="${new Date().toISOString().slice(0,10)}" value="${esc(state.installation_date)}">
   </div>
   <button class="btn primary" id="s1next">Next: Add Windows →</button>`;
+
+  $("#f_lift").querySelectorAll("button").forEach(b=>b.onclick=()=>{
+    const v = b.dataset.v==="1";
+    state.lift_available = state.lift_available===v ? null : v;
+    state.floor_number = $("#f_floor").value.trim();
+    renderStep1(); });
 
   $("#f_gpsbtn").onclick = ()=>{
     if(!navigator.geolocation){ toast("GPS not available on this phone"); return; }
@@ -469,6 +570,7 @@ function renderStep1(){
     state.customer_name = $("#f_cust").value.trim();
     state.customer_phone = $("#f_phone").value.trim();
     state.address = $("#f_addr").value.trim();
+    state.floor_number = $("#f_floor").value.trim();
     state.installation_date = $("#f_inst").value;
     if(!state.salesperson){ toast("Please enter the salesperson name"); return; }
     if(!state.customer_name){ toast("Please enter the customer name"); return; }
@@ -495,6 +597,8 @@ function renderStep2(){
         <div class="pill">${esc(meta.nm)}</div></div>
       <div class="det">${w.width_cm}×${w.height_cm} cm · ${esc(LAYER_NAMES[w.layer]||"")}
         ${w.fixing?" · "+w.fixing:""}${p.list.length?" · +"+p.list.length+" add-on(s)":""}
+        ${coverageNote(w)?"<br>"+coverageNote(w):""}
+        ${(w.photos||[]).length?" · 📷 "+w.photos.length:""}
         ${fabtxt?"<br>"+fabtxt:""}</div>
       <div class="price">${fmt(p.total)}</div>
       <div class="acts">
@@ -529,12 +633,47 @@ function renderStep2(){
 function blankWin(){
   return { window_name:"W"+(state.windows.length+1), room:"", style:"", layer:"",
     width_cm:"", height_cm:"", pooling_cm:0, fixing:"", opening:"", track_color:"",
-    fabric_sheer:"", fabric_blackout:"", addons:{stick:0,returns:0,bend:0,tie:0,alteration:0}, notes:"" };
+    fabric_sheer:"", fabric_blackout:"", addons:{stick:0,returns:0,bend:0,tie:0,alteration:0}, notes:"",
+    // coverage geometry — width_cm/height_cm are always the DERIVED totals
+    coverage:"wall_to_wall", base_width_cm:"", left_extra_cm:0, right_extra_cm:0,
+    base_height_cm:"", top_extra_cm:0,
+    uneven:false, height_left_cm:"", height_middle_cm:"", height_right_cm:"",
+    measured_by:"", centre_overlap_cm:0, photos:[],
+    // site details (optional)
+    ceiling_material:"", skirting_height_cm:"", pocket_depth_cm:"", window_shape:"",
+    // finishing details (optional)
+    velcro_side:"", velcro_middle_pieces:0, tieback_finish:"", tieback_side:"",
+    motor_side:"", socket_nearby:null, trunking_needed:null,
+    existing_covering:"", existing_count:0, existing_action:"", fullness_override:"" };
+}
+
+// Fill in keys missing from older drafts / older saved windows, so arithmetic never sees undefined.
+function normalizeWin(w){
+  const d = blankWin();
+  for(const k in d){ if(w[k]===undefined) w[k] = d[k]; }
+  w.addons = w.addons || {};
+  if(!Array.isArray(w.photos)) w.photos = [];
+  // pre-coverage windows stored only width_cm/height_cm — treat those as the base measurement
+  if(w.base_width_cm==="" && w.width_cm!=="") w.base_width_cm = w.width_cm;
+  if(w.base_height_cm==="" && w.height_cm!=="") w.base_height_cm = w.height_cm;
+  return w;
+}
+
+// Single source of truth for the derived totals. Call before pricing or rendering.
+function applyGeometry(w){
+  const lx = w.coverage==="window_width" ? (+w.left_extra_cm||0) : 0;
+  const rx = w.coverage==="window_width" ? (+w.right_extra_cm||0) : 0;
+  const tx = w.fixing==="Wall" ? (+w.top_extra_cm||0) : 0;
+  w.width_cm  = w.base_width_cm==="" || w.base_width_cm==null ? "" : r2((+w.base_width_cm||0) + lx + rx);
+  w.height_cm = w.base_height_cm==="" || w.base_height_cm==null ? "" : r2((+w.base_height_cm||0) + tx);
+  return w;
 }
 
 function openWinEditor(idx){
   editIdx = idx;
   editWin = idx>=0 ? JSON.parse(JSON.stringify(state.windows[idx])) : blankWin();
+  normalizeWin(editWin); applyGeometry(editWin);
+  accOpen = {site:false, finish:false};
   drawWinEditor();
 }
 
@@ -545,6 +684,30 @@ function drawWinEditor(){
   const isBlind = meta.cat==="blind";
   const isCurtain = meta.cat==="curtain" && w.style!=="roman";
   const p = w.style && w.layer ? productFor(w.style,w.layer) : (isBlind? productFor(w.style,null):null);
+
+  // "Inside frame" only makes sense for things that sit in a recess
+  const canInside = isBlind || w.style==="roman";
+  if(w.coverage==="inside_frame" && !canInside) w.coverage = "wall_to_wall";
+  // uneven heights drive the base height: use the SMALLEST so the curtain never drags
+  if(w.uneven){
+    const hs = [w.height_left_cm, w.height_middle_cm, w.height_right_cm].map(x=>+x).filter(x=>x>0);
+    if(hs.length) w.base_height_cm = Math.min(...hs);
+  }
+  applyGeometry(w);
+
+  const covLabel = w.coverage==="window_width" ? "Window width (cm)"
+    : w.coverage==="inside_frame" ? "Recess width (cm)" : "Wall-to-wall width (cm)";
+  const covHint = w.coverage==="window_width" ? "Just the window opening itself — the side extras go below."
+    : w.coverage==="inside_frame" ? "Measure inside the recess at its narrowest point."
+    : "The full wall span to be covered. Minimum 1 m is charged.";
+  let unevenNote = "";
+  if(w.uneven){
+    const hs = [w.height_left_cm, w.height_middle_cm, w.height_right_cm].map(x=>+x).filter(x=>x>0);
+    unevenNote = hs.length>1
+      ? `<div class="totbox">📐 Height used: ${Math.min(...hs)} cm<small>Smallest of the three — difference ${r2(Math.max(...hs)-Math.min(...hs))} cm is recorded for the installer</small></div>`
+      : `<div class="hint">Enter all three heights. The smallest will be used so the curtain never drags.</div>`;
+  }
+
   const price = windowPrice(w);
   const fabs = windowFabrics(w);
 
@@ -601,6 +764,15 @@ function drawWinEditor(){
 
   const motorCode = w.layer==="sheer_blackout" ? "ADD-MOT2" : "ADD-MOT1";
 
+  // generic single-select chip row bound to a field on w; tap the chosen chip again to clear it
+  const chipRow = (field, list) => `<div class="chips">` + list.map(v=>
+    `<div class="chip ${w[field]===v?"on":""}" data-set="${field}|${esc(v)}">${esc(v)}</div>`).join("") + `</div>`;
+  const nSet = keys => keys.filter(k=>{
+    const v = w[k]; return v!==""&&v!=null&&v!==false&&v!==0; }).length;
+  const siteCount = nSet(["ceiling_material","skirting_height_cm","pocket_depth_cm","window_shape"]);
+  const finCount = nSet(["velcro_side","velcro_middle_pieces","tieback_finish","tieback_side",
+    "motor_side","socket_nearby","trunking_needed","existing_covering","existing_action","fullness_override"]);
+
   const html = `
   <div class="overlay" id="winov">
     <div class="obar">
@@ -622,11 +794,57 @@ function drawWinEditor(){
     </div>
 
     <div class="card">
-      <label class="f">Width (cm) <span class="req">*</span></label>
-      <input type="number" id="w_w" inputmode="decimal" placeholder="e.g. 240" value="${w.width_cm||""}">
-      <div class="hint">Measure the full width to be covered, including overlap on both sides. Minimum 1 m is charged.</div>
+      <label class="f">How far should it cover? <span class="req">*</span></label>
+      <div class="seg" id="w_cov">
+        <button data-c="wall_to_wall" class="${w.coverage==="wall_to_wall"?"on":""}">Wall to wall</button>
+        <button data-c="window_width" class="${w.coverage==="window_width"?"on":""}">Window width</button>
+        ${canInside?`<button data-c="inside_frame" class="${w.coverage==="inside_frame"?"on":""}">Inside frame</button>`:""}
+      </div>
+
+      <label class="f">${covLabel} <span class="req">*</span></label>
+      <input type="number" id="w_bw" inputmode="decimal" placeholder="e.g. 240" value="${w.base_width_cm||""}">
+      <div class="hint">${covHint}</div>
+
+      ${w.coverage==="window_width"?`
+      <div class="two">
+        <div><label class="f">Left extra (cm)</label>
+          <input type="number" id="w_lx" inputmode="decimal" placeholder="0" value="${+w.left_extra_cm||""}"></div>
+        <div><label class="f">Right extra (cm)</label>
+          <input type="number" id="w_rx" inputmode="decimal" placeholder="0" value="${+w.right_extra_cm||""}"></div>
+      </div>
+      <div class="hint">How much the curtain goes past the window on each side. Leave 0 if none.</div>
+      ${w.base_width_cm!==""?`<div class="totbox">📏 Total width to cover: ${w.width_cm} cm
+        <small>${+w.base_width_cm} window + ${+w.left_extra_cm||0} left + ${+w.right_extra_cm||0} right</small></div>`:""}`:""}
+
+      <label class="f">Fixing</label>
+      <div class="seg" id="w_fix">
+        <button data-f="Wall" class="${w.fixing==="Wall"?"on":""}">Wall</button>
+        <button data-f="Ceiling" class="${w.fixing==="Ceiling"?"on":""}">Ceiling</button>
+      </div>
+
+      <div class="addon" style="margin-top:10px">
+        <div class="l"><div class="nm">Floor or ceiling is uneven</div>
+          <div class="pr">Record left / middle / right heights</div></div>
+        <button class="switch ${w.uneven?"on":""}" data-uv="1"></button>
+      </div>
+
+      ${w.uneven?`
+      <div class="two">
+        <div><label class="f">Left (cm)</label><input type="number" id="w_hl" inputmode="decimal" value="${w.height_left_cm||""}"></div>
+        <div><label class="f">Middle (cm)</label><input type="number" id="w_hm" inputmode="decimal" value="${w.height_middle_cm||""}"></div>
+        <div><label class="f">Right (cm)</label><input type="number" id="w_hr" inputmode="decimal" value="${w.height_right_cm||""}"></div>
+      </div>
+      ${unevenNote}`:`
       <label class="f">Height (cm) <span class="req">*</span></label>
-      <input type="number" id="w_h" inputmode="decimal" placeholder="e.g. 290" value="${w.height_cm||""}">
+      <input type="number" id="w_bh" inputmode="decimal" placeholder="e.g. 290" value="${w.base_height_cm||""}">`}
+
+      ${w.fixing==="Wall"?`
+      <label class="f">Extra above the window (cm)</label>
+      <input type="number" id="w_tx" inputmode="decimal" placeholder="0" value="${+w.top_extra_cm||""}">
+      <div class="hint">How high above the window the track sits. Leave 0 if the height above already includes it.</div>
+      ${w.base_height_cm!==""&&+w.top_extra_cm>0?`<div class="totbox">📐 Total height: ${w.height_cm} cm
+        <small>${+w.base_height_cm} + ${+w.top_extra_cm} above window</small></div>`:""}`:""}
+
       ${(p && p.tall_window_rule) ? `<div class="hint">Above 300 cm height, the rate increases proportionally (× height ÷ 3).</div>`:""}
       ${!isBlind && w.style ? `
       <label class="f">Pooling on floor</label>
@@ -639,23 +857,38 @@ function drawWinEditor(){
         <input type="number" id="w_poolcm" inputmode="decimal" placeholder="cm" value="${Math.abs(+w.pooling_cm)||""}">
         <div class="hint">${+w.pooling_cm<0?"How many cm above the floor":"How many cm pooling on the floor"}</div>
       </div>`:""}
+
+      <label class="f">Who measured?</label>
+      <div class="seg" id="w_meas">
+        <button data-m="our_team" class="${w.measured_by==="our_team"?"on":""}">Our team</button>
+        <button data-m="customer" class="${w.measured_by==="customer"?"on":""}">Customer gave sizes</button>
+      </div>
+      ${w.measured_by==="customer"?`<div class="hint">⚠️ Our team will re-measure before production. The final invoice follows our measurement.</div>`:""}
     </div>
 
     <div class="card">
-      <label class="f">Fixing</label>
-      <div class="seg" id="w_fix">
-        <button data-f="Wall" class="${w.fixing==="Wall"?"on":""}">Wall</button>
-        <button data-f="Ceiling" class="${w.fixing==="Ceiling"?"on":""}">Ceiling</button>
-      </div>
       ${isCurtain||w.style==="roman"?`
       <label class="f">Opening</label>
       <div class="seg" id="w_open">
         <button data-o="Middle (2-way)" class="${w.opening==="Middle (2-way)"?"on":""}">Middle</button>
         <button data-o="One side (1-way)" class="${w.opening==="One side (1-way)"?"on":""}">One side</button>
-      </div>`:""}
+      </div>
+      ${w.opening==="Middle (2-way)"?`
+      <label class="f">Centre overlap (cm)</label>
+      <input type="number" id="w_ov" inputmode="decimal" placeholder="0" value="${+w.centre_overlap_cm||""}">
+      <div class="hint">How much the two panels overlap in the middle.</div>`:""}`:""}
       ${isCurtain?`
       <label class="f">Track colour</label>
       <div class="chips" id="w_track">${["White","Black","Grey"].map(c=>`<div class="chip ${w.track_color===c?"on":""}" data-t="${c}">${c}</div>`).join("")}</div>`:""}
+    </div>
+
+    <div class="card">
+      <label class="f">Photos of this window</label>
+      <div class="photos" id="w_photos">${(w.photos||[]).map((u,pi)=>
+        `<div class="ph"><img src="${esc(u)}" alt=""><button data-rmph="${pi}">✕</button></div>`).join("")}</div>
+      <input type="file" id="w_file" accept="image/*" capture="environment" multiple style="display:none">
+      <button class="cambtn" id="w_cam" style="margin-top:8px">📷 Take / add photo</button>
+      <div class="hint">A photo saves a lot of explaining later — beams, sockets, skirting, existing tracks.</div>
     </div>
 
     ${fabSection}
@@ -676,6 +909,79 @@ function drawWinEditor(){
       ${addonStep("alteration","ADD-ALT","per curtain")}
     </div>
 
+    <div class="acc ${accOpen.site?"":"shut"}" id="acc_site">
+      <div class="hd" data-acc="site"><span>🏠 Site details (optional)</span>
+        <span class="ar">${siteCount?siteCount+" set":"none"} ${accOpen.site?"▲":"▼"}</span></div>
+      <div class="bd">
+        <label class="f">Ceiling / wall material</label>
+        ${chipRow("ceiling_material", CEILING_MATERIALS)}
+        <div class="hint">Tells the team which drill and brackets to bring.</div>
+        <div class="two">
+          <div><label class="f">Skirting height (cm)</label>
+            <input type="number" id="w_skirt" inputmode="decimal" placeholder="0" value="${w.skirting_height_cm||""}"></div>
+          <div><label class="f">Pocket depth (cm)</label>
+            <input type="number" id="w_pocket" inputmode="decimal" placeholder="0" value="${w.pocket_depth_cm||""}"></div>
+        </div>
+        <label class="f">Window shape</label>
+        ${chipRow("window_shape", WINDOW_SHAPES)}
+        ${w.window_shape&&w.window_shape!=="Straight"?`<div class="hint">⚠️ A bend rail is usually needed — add it under Add-ons.</div>`:""}
+      </div>
+    </div>
+
+    <div class="acc ${accOpen.finish?"":"shut"}" id="acc_finish">
+      <div class="hd" data-acc="finish"><span>🧷 Finishing details (optional)</span>
+        <span class="ar">${finCount?finCount+" set":"none"} ${accOpen.finish?"▲":"▼"}</span></div>
+      <div class="bd">
+        ${w.addons&&w.addons.velcro?`
+        <label class="f">Velcro side</label>
+        ${chipRow("velcro_side", SIDES)}
+        <div class="addon" style="margin-top:6px">
+          <div class="l"><div class="nm">Extra pieces in the middle</div><div class="pr">Small velcro pieces</div></div>
+          <div class="stepper"><button data-dec="velcro_middle_pieces">−</button>
+          <div class="qv">${+w.velcro_middle_pieces||0}</div><button data-inc="velcro_middle_pieces">＋</button></div>
+        </div>`:`<div class="hint">Turn on “Light-reduction Velcro Stitching” in Add-ons to set velcro placement.</div>`}
+
+        ${w.addons&&w.addons.tie?`
+        <label class="f">Tie-back finish</label>
+        ${chipRow("tieback_finish", TIEBACK_FINISHES)}
+        <label class="f">Tie-back side</label>
+        ${chipRow("tieback_side", SIDES)}`:""}
+
+        ${w.addons&&w.addons.motor?`
+        <label class="f">Motor side</label>
+        ${chipRow("motor_side", ["Left","Right"])}
+        <div class="addon" style="margin-top:6px">
+          <div class="l"><div class="nm">Power socket nearby</div><div class="pr">Within cable reach of the track</div></div>
+          <button class="switch ${w.socket_nearby?"on":""}" data-bool="socket_nearby"></button>
+        </div>
+        <div class="addon">
+          <div class="l"><div class="nm">Cable trunking needed</div><div class="pr">To hide the motor cable</div></div>
+          <button class="switch ${w.trunking_needed?"on":""}" data-bool="trunking_needed"></button>
+        </div>`:""}
+
+        <label class="f">Already installed at this window</label>
+        ${chipRow("existing_covering", EXISTING_TYPES)}
+        ${w.existing_covering?`
+        <div class="addon" style="margin-top:6px">
+          <div class="l"><div class="nm">How many</div><div class="pr">Curtains / blinds to handle</div></div>
+          <div class="stepper"><button data-dec="existing_count">−</button>
+          <div class="qv">${+w.existing_count||0}</div><button data-inc="existing_count">＋</button></div>
+        </div>
+        <label class="f">What to do with it</label>
+        <div class="seg" id="w_exact">
+          <button data-set="existing_action|remove" class="${w.existing_action==="remove"?"on":""}">Remove</button>
+          <button data-set="existing_action|reuse" class="${w.existing_action==="reuse"?"on":""}">Reuse</button>
+          <button data-set="existing_action|leave" class="${w.existing_action==="leave"?"on":""}">Leave as is</button>
+        </div>`:""}
+
+        ${!isBlind&&w.style?`
+        <label class="f">Gather / fullness override</label>
+        <input type="number" id="w_full" inputmode="decimal" step="0.1"
+          placeholder="Standard ${FULLNESS[w.style] ?? 2.2}× — leave empty" value="${w.fullness_override||""}">
+        <div class="hint">Only if the customer asked for more or less gathering. This changes the fabric estimate.</div>`:""}
+      </div>
+    </div>
+
     <div class="card">
       <label class="f">Notes for this window (optional)</label>
       <textarea id="w_notes" placeholder="Anything special…">${esc(w.notes||"")}</textarea>
@@ -691,13 +997,26 @@ function drawWinEditor(){
   $("#overlay_root").innerHTML = html;
   document.body.style.overflow = "hidden";
 
+  // Every input in this overlay MUST be read here — the editor re-renders on any tap,
+  // so an unread field would be wiped the moment the user touches a chip or switch.
+  const val = (id, field)=>{ const e = $("#"+id); if(e) w[field] = e.value; };
   const grab = ()=>{
     w.window_name = $("#w_name").value.trim() || w.window_name;
-    w.width_cm = $("#w_w").value; w.height_cm = $("#w_h").value;
+    val("w_bw","base_width_cm"); val("w_lx","left_extra_cm"); val("w_rx","right_extra_cm");
+    val("w_bh","base_height_cm"); val("w_tx","top_extra_cm");
+    val("w_hl","height_left_cm"); val("w_hm","height_middle_cm"); val("w_hr","height_right_cm");
+    val("w_ov","centre_overlap_cm");
+    val("w_skirt","skirting_height_cm"); val("w_pocket","pocket_depth_cm");
+    val("w_full","fullness_override");
     const pc = $("#w_poolcm"); if(pc){
       const sign = +w.pooling_cm<0 ? -1 : (+w.pooling_cm>0 ? 1 : 0);
       const v = Math.abs(+pc.value||0); w.pooling_cm = sign*v; }
     w.notes = $("#w_notes").value;
+    if(w.uneven){
+      const hs = [w.height_left_cm, w.height_middle_cm, w.height_right_cm].map(x=>+x).filter(x=>x>0);
+      if(hs.length) w.base_height_cm = Math.min(...hs);
+    }
+    applyGeometry(w);
   };
   const redraw = ()=>{ grab(); drawWinEditor(); };
 
@@ -724,7 +1043,52 @@ function drawWinEditor(){
   $("#winov").querySelectorAll("[data-sm]").forEach(b=>b.onclick=()=>{ grab();
     const k=b.dataset.sm; w.addons[k]=Math.max(0,(+w.addons[k]||0)-1); drawWinEditor(); });
   $("#winov").querySelectorAll("[data-fp]").forEach(b=>b.onclick=()=>{ grab(); openFabricPicker(b.dataset.fp); });
-  ["w_w","w_h"].forEach(id=>{ $("#"+id).addEventListener("change", redraw); });
+
+  const wc = $("#w_cov"); if(wc) wc.querySelectorAll("button").forEach(b=>b.onclick=()=>{
+    grab();
+    w.coverage = b.dataset.c;
+    if(w.coverage!=="window_width"){ w.left_extra_cm = 0; w.right_extra_cm = 0; }
+    drawWinEditor(); });
+  const wm = $("#w_meas"); if(wm) wm.querySelectorAll("button").forEach(b=>b.onclick=()=>{
+    grab(); w.measured_by = w.measured_by===b.dataset.m ? "" : b.dataset.m; drawWinEditor(); });
+  $("#winov").querySelectorAll("[data-uv]").forEach(b=>b.onclick=()=>{
+    grab(); w.uneven = !w.uneven;
+    if(!w.uneven){ w.height_left_cm=""; w.height_middle_cm=""; w.height_right_cm=""; }
+    drawWinEditor(); });
+  // generic chip / segment selection: data-set="field|value" (tap again to clear)
+  $("#winov").querySelectorAll("[data-set]").forEach(c=>c.onclick=()=>{
+    grab(); const i = c.dataset.set.indexOf("|");
+    const f = c.dataset.set.slice(0,i), v = c.dataset.set.slice(i+1);
+    w[f] = (w[f]===v ? "" : v);
+    if(f==="existing_covering" && !w[f]){ w.existing_count = 0; w.existing_action = ""; }
+    drawWinEditor(); });
+  $("#winov").querySelectorAll("[data-bool]").forEach(b=>b.onclick=()=>{
+    grab(); const f=b.dataset.bool; w[f] = !w[f]; drawWinEditor(); });
+  $("#winov").querySelectorAll("[data-inc]").forEach(b=>b.onclick=()=>{
+    grab(); const f=b.dataset.inc; w[f] = (+w[f]||0)+1; drawWinEditor(); });
+  $("#winov").querySelectorAll("[data-dec]").forEach(b=>b.onclick=()=>{
+    grab(); const f=b.dataset.dec; w[f] = Math.max(0,(+w[f]||0)-1); drawWinEditor(); });
+  $("#winov").querySelectorAll("[data-acc]").forEach(h=>h.onclick=()=>{
+    grab(); accOpen[h.dataset.acc] = !accOpen[h.dataset.acc]; drawWinEditor(); });
+
+  // photos
+  const fileEl = $("#w_file");
+  $("#w_cam").onclick = ()=>{ grab(); fileEl.click(); };
+  fileEl.onchange = async ()=>{
+    const files = Array.from(fileEl.files||[]); if(!files.length) return;
+    grab(); loading(true, "Uploading photo…");
+    for(const f of files){
+      try{ const url = await uploadPhoto(f); w.photos.push(url); }
+      catch(e){ toast("Photo failed: "+e.message); }
+    }
+    loading(false); drawWinEditor();
+  };
+  $("#winov").querySelectorAll("[data-rmph]").forEach(b=>b.onclick=()=>{
+    grab(); w.photos.splice(+b.dataset.rmph,1); drawWinEditor(); });
+
+  // live recalc as numbers are typed — only bind ids that exist in this render
+  ["w_bw","w_lx","w_rx","w_bh","w_tx","w_hl","w_hm","w_hr","w_full"].forEach(id=>{
+    const e = $("#"+id); if(e) e.addEventListener("change", redraw); });
 
   $("#ov_save").onclick = ()=>{
     grab();
@@ -784,6 +1148,7 @@ function renderStep3(){
     const meta = STYLE_META[w.style]||{nm:w.style};
     return `<div class="revline"><span>${esc(w.window_name||("W"+(i+1)))} — ${esc(meta.nm)} ${esc(LAYER_NAMES[w.layer]||"")} (${w.width_cm}×${w.height_cm})</span>
       <span><b>${fmt(p.total)}</b></span></div>` +
+      (coverageNote(w)?`<div class="revline mut"><span>&nbsp;&nbsp;${coverageNote(w)}</span><span></span></div>`:"") +
       p.list.map(a=>`<div class="revline mut"><span>&nbsp;&nbsp;• ${esc(a.name)}${a.qty>1?" ×"+a.qty:""}</span><span>${fmt(a.amount)}</span></div>`).join("");
   }).join("");
 
@@ -849,6 +1214,8 @@ async function submitOrder(){
     location_url: state.location_url || null,
     installation_date: state.installation_date || null,
     address: state.address || null,
+    floor_number: state.floor_number || null,
+    lift_available: state.lift_available===null||state.lift_available===undefined?null:!!state.lift_available,
     advance_amount: state.advance_amount || 0,
     payment_mode: state.payment_mode || null,
     notes: state.notes || null,
@@ -869,7 +1236,35 @@ async function submitOrder(){
         sheer_fabric_m: fS? fS.meters : null,
         blackout_fabric_m: fB? fB.meters : null,
         addons: windowAddons(w).map(a=>({code:a.code, qty:a.qty})),
-        notes: w.notes || null
+        notes: w.notes || null,
+        // coverage geometry — server re-derives width/height from these
+        coverage_type: w.coverage || "wall_to_wall",
+        base_width_cm: w.base_width_cm===""? null : +w.base_width_cm,
+        left_extra_cm: +w.left_extra_cm||0,
+        right_extra_cm: +w.right_extra_cm||0,
+        base_height_cm: w.base_height_cm===""? null : +w.base_height_cm,
+        top_extra_cm: +w.top_extra_cm||0,
+        height_left_cm: +w.height_left_cm||null,
+        height_middle_cm: +w.height_middle_cm||null,
+        height_right_cm: +w.height_right_cm||null,
+        measured_by: w.measured_by||null,
+        centre_overlap_cm: +w.centre_overlap_cm||0,
+        photo_urls: w.photos||[],
+        ceiling_material: w.ceiling_material||null,
+        skirting_height_cm: +w.skirting_height_cm||null,
+        pocket_depth_cm: +w.pocket_depth_cm||null,
+        window_shape: w.window_shape||null,
+        velcro_side: w.velcro_side||null,
+        velcro_middle_pieces: +w.velcro_middle_pieces||0,
+        tieback_finish: w.tieback_finish||null,
+        tieback_side: w.tieback_side||null,
+        motor_side: w.motor_side||null,
+        socket_nearby: w.socket_nearby===null?null:!!w.socket_nearby,
+        trunking_needed: w.trunking_needed===null?null:!!w.trunking_needed,
+        existing_covering: w.existing_covering||null,
+        existing_count: +w.existing_count||0,
+        existing_action: w.existing_action||null,
+        fullness_override: +w.fullness_override||null
       };
     })
   };
@@ -902,7 +1297,8 @@ function showSuccess(res){
 function newOrder(){
   const sp = state.salesperson;
   state = { step:1, customer_name:"", customer_phone:"", salesperson:sp, gps:null, location_url:"",
-    installation_date:"", address:"", advance_amount:"", payment_mode:"", notes:"", windows:[] };
+    installation_date:"", address:"", floor_number:"", lift_available:null,
+    advance_amount:"", payment_mode:"", notes:"", windows:[] };
   $("#stepdots").style.display="flex"; $("#stepname").style.display="block";
   render(); window.scrollTo(0,0);
 }
