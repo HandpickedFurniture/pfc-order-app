@@ -15,7 +15,11 @@
   }
   *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
   html,body{margin:0;padding:0;background:var(--bg);color:var(--txt);
-    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;font-size:16px;}
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,
+      "Noto Sans Devanagari","Noto Sans Bengali",Arial,sans-serif;font-size:16px;}
+  /* Devanagari and Bengali need more vertical room than Latin */
+  html[lang="hi"] body,html[lang="bn"] body{line-height:1.5;}
+  html[lang="hi"] label.f,html[lang="bn"] label.f{line-height:1.45;}
   h1,h2,h3{margin:0;}
   .hidden{display:none !important;}
 
@@ -26,6 +30,14 @@
     display:flex;align-items:center;justify-content:center;font-weight:800;font-size:15px;flex:none;}
   header .t1{font-size:17px;font-weight:700;line-height:1.1;}
   header .t2{font-size:12px;opacity:.85;}
+  /* language selector — first item in the header, top left */
+  header .langsel{width:auto;flex:none;padding:7px 26px 7px 9px;font-size:14px;font-weight:700;
+    border:1.5px solid rgba(255,255,255,.45);border-radius:10px;background:rgba(255,255,255,.12);
+    color:#fff;line-height:1.2;
+    background-image:url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath fill='%23fff' d='M6 8 0 0h12z'/%3E%3C/svg%3E");
+    background-repeat:no-repeat;background-position:right 9px center;background-size:9px;}
+  header .langsel option{color:var(--txt);background:#fff;}
+  header .langsel:focus{outline:none;border-color:#fff;}
 
   /* Steps */
   .steps{display:flex;gap:6px;padding:12px 16px 0;}
@@ -193,10 +205,15 @@
 <body>
 
 <header>
+  <select class="langsel" id="langsel" aria-label="Language">
+    <option value="en">EN</option>
+    <option value="hi">हिं</option>
+    <option value="bn">বাং</option>
+  </select>
   <div class="logo">PFC</div>
   <div>
     <div class="t1">Perfect Fit Curtains</div>
-    <div class="t2">Sales Order App</div>
+    <div class="t2" id="hdr_sub">Sales Order App</div>
   </div>
 </header>
 
@@ -247,6 +264,348 @@ const STYLE_IMG = {
 };
 const LAYER_NAMES = {sheer:"Sheer only", blackout:"Blackout only", sheer_blackout:"Sheer + Blackout"};
 const ROOMS = ["Living Room","Master Bedroom","Bedroom 2","Bedroom 3","Kids Room","Majlis","Dining","Kitchen","Office","Balcony Door","Other"];
+/* ================= LANGUAGES =================
+   Only the VISIBLE TEXT is translated. Everything written to the database,
+   the WhatsApp message and the CSV export stays canonical English — see tv(). */
+let LANG = localStorage.getItem("pfc_lang") || "en";
+const I18N = {
+en:{ui:{
+"app.sub":"Sales Order App",
+"step.1":"Step 1 of 3 — Customer","step.2":"Step 2 of 3 — Windows & Products","step.3":"Step 3 of 3 — Review & Confirm",
+"tb.subtotal":"Subtotal","tb.total":"Total","tb.disc":"Discount {p}% applied 🎉","tb.continue":"Continue",
+"load":"Loading…","load.catalog":"Loading catalog…","load.fabrics":"Loading fabric list…",
+"load.photo":"Uploading photo…","load.submit":"Submitting order…",
+"optional":"(optional)","yes":"Yes","no":"No","none":"none",
+"s1.sales":"Salesperson","s1.sales.ph":"Type your name",
+"s1.sales.hint":"Pick your name from the list, or type it once — it will be remembered.",
+"s1.cust":"Customer name","s1.cust.ph":"e.g. Mr. Ahmed Villa 12",
+"s1.phone":"Customer phone (optional)","s1.phone.ph":"05x xxx xxxx",
+"s1.loc":"Location (optional)","s1.gps.btn":"📍 Capture GPS",
+"s1.gps.idle":"Tap to save the customer's location","s1.gps.saved":"✓ Location saved ({n} m)",
+"s1.gps.getting":"Getting location…","s1.gps.denied":"Could not get location — check phone GPS permission",
+"s1.addr":"Address / Area (optional)","s1.addr.ph":"e.g. International City, England Cluster X22",
+"s1.floor":"Floor (optional)","s1.floor.ph":"e.g. Ground, 12","s1.lift":"Lift available?",
+"s1.inst":"Intended installation date (optional)","s1.next":"Next: Add Windows →",
+"t.gps.na":"GPS not available on this phone","t.gps.fail":"Location failed: {m}",
+"t.need.sales":"Please enter the salesperson name","t.need.cust":"Please enter the customer name",
+"t.need.style":"Please choose the product / style","t.need.layer":"Please choose the layers",
+"t.need.wh":"Please enter width and height in cm","t.need.window":"Add at least one window",
+"t.load.fail":"Could not load data: {m}","t.photo.fail":"Photo failed: {m}",
+"t.submit.fail":"Could not submit: {m} — your order is saved as draft, try again.",
+"s2.empty":"No windows added yet.<br>Tap the big orange button to add the first window.",
+"s2.addons":"+{n} add-on","s2.edit":"✏️ Edit","s2.copy":"📋 Copy","s2.del":"🗑 Delete",
+"s2.add":"＋ Add Window","s2.back":"← Back to Customer","s2.review":"Review Order →",
+"s2.addfirst":"Add a window first","s2.del.confirm":"Delete this window?",
+"sheer":"Sheer","blackout":"Blackout","tbd":"TBD",
+"cn.win":"Window {b} + {l} left + {r} right = <b>{n} cm</b>","cn.win0":"Window width {n} cm (no side extra)","cn.top":"+{n} cm above window","cn.uneven":"uneven {h} → {n}","cn.custsize":"⚠️ customer sizes","cn.gather":"gather {n}×",
+"layer.sheer":"Sheer only","layer.blackout":"Blackout only","layer.sheer_blackout":"Sheer + Blackout",
+"we.add":"Add Window","we.edit":"Edit Window","we.name":"Window name","we.room":"Room",
+"we.product":"Product","we.layers":"Layers","we.from.m":"from AED {p}/m width","we.from.sqm":"from AED {p}/m²",
+"we.cover":"How far should it cover?",
+"cov.w2w":"Wall to wall","cov.win":"Window width","cov.in":"Inside frame",
+"cov.lbl.w2w":"Wall-to-wall width (cm)","cov.lbl.win":"Window width (cm)","cov.lbl.in":"Recess width (cm)",
+"cov.hint.w2w":"The full wall span to be covered. Minimum 1 m is charged.",
+"cov.hint.win":"Just the window opening itself — the side extras go below.",
+"cov.hint.in":"Measure inside the recess at its narrowest point.",
+"we.lx":"Left extra (cm)","we.rx":"Right extra (cm)",
+"we.extra.hint":"How much the curtain goes past the window on each side. Leave 0 if none.",
+"we.totalw":"📏 Total width to cover: {n} cm","we.totalw.sub":"{b} window + {l} left + {r} right",
+"we.fixing":"Fixing",
+"we.uneven":"Floor or ceiling is uneven","we.uneven.sub":"Record left / middle / right heights",
+"we.left":"Left (cm)","we.mid":"Middle (cm)","we.right":"Right (cm)",
+"we.hused":"📐 Height used: {n} cm",
+"we.hused.sub":"Smallest of the three — difference {d} cm is recorded for the installer",
+"we.uneven.hint":"Enter all three heights. The smallest will be used so the curtain never drags.",
+"we.height":"Height (cm)","we.height.ph":"e.g. 290","we.width.ph":"e.g. 240",
+"we.tx":"Extra above the window (cm)",
+"we.tx.hint":"How high above the window the track sits. Leave 0 if the height above already includes it.",
+"we.totalh":"📐 Total height: {n} cm","we.totalh.sub":"{b} + {t} above window",
+"we.tall.hint":"Above 300 cm height, the rate increases proportionally (× height ÷ 3).",
+"we.pool":"Pooling on floor","pool.above":"Above floor","pool.touch":"Touching","pool.puddle":"Puddle",
+"we.pool.a.hint":"How many cm above the floor","we.pool.p.hint":"How many cm pooling on the floor",
+"we.meas":"Who measured?","meas.team":"Our team","meas.cust":"Customer gave sizes",
+"we.open":"Opening","open.mid":"Middle","open.one":"One side",
+"we.overlap":"Centre overlap (cm)","we.overlap.hint":"How much the two panels overlap in the middle.",
+"we.track":"Track colour",
+"we.track.free":"White track is free. Black track adds AED 40 per metre of width.",
+"we.track.calc":"Black track: AED 40 × {m} m = <b>{amt}</b>",
+"we.tie":"Tie belt","tie.none":"No tie belt","tie.velcro":"Velcro","tie.hooks":"With hooks",
+"we.tie.hint":"Free of charge, in the same fabric as the curtain.",
+"we.side":"Which side?","we.hookfin":"Hook finish",
+"we.photos":"Photos of this window","we.cam":"📷 Take / add photo",
+"we.photos.hint":"A photo saves a lot of explaining later — beams, sockets, skirting, existing tracks.",
+"we.fabric":"Fabric","we.fab.pick":"🔍 Choose {layer} fabric (or decide later)",
+"we.fab.set":"✓ {code} — roll width {w} cm",
+"we.fab.need":"🧵 <b>Fabric needed (incl. 1 m safety):</b>",
+"we.fab.none":"(no fabric yet — {n} cm assumed)","we.fab.roll2":"roll {n} cm","we.fab.assumed":" assumed",
+"acc.addons":"➕ Add-ons for this window","acc.site":"🏠 Site details (optional)","acc.finish":"🧷 Finishing details (optional)",
+"acc.added":"{n} added","acc.set":"{n} set",
+"addon.free":" — FREE","addon.perm":"AED {p}/m width","addon.warranty":"{p} — 7 yr warranty",
+"unit.stick":"per stick","unit.side":"per side","unit.meter":"per meter","unit.curtain":"per curtain",
+"we.velcro.mid":"Extra pieces in the middle",
+"we.ceiling":"Ceiling / wall material","we.ceiling.hint":"Tells the team which drill and brackets to bring.",
+"we.skirt":"Skirting height (cm)","we.pocket":"Pocket depth (cm)","we.shape":"Window shape",
+"we.shape.hint":"⚠️ A bend rail is usually needed — add it under Add-ons.",
+"we.motorside":"Motor side","we.socket":"Power socket nearby","we.socket.sub":"Within cable reach of the track",
+"we.trunk":"Cable trunking needed","we.trunk.sub":"To hide the motor cable",
+"we.existing":"Already installed at this window","we.howmany":"How many","we.howmany.sub":"Curtains / blinds to handle",
+"we.whattodo":"What to do with it","act.remove":"Remove","act.reuse":"Reuse","act.leave":"Leave as is",
+"we.full":"Gather / fullness override","we.full.ph":"Standard {n}× — leave empty",
+"we.full.hint":"Only if the customer asked for more or less gathering. This changes the fabric estimate.",
+"we.notes":"Notes for this window (optional)","we.notes.ph":"Anything special…",
+"we.this":"This window","we.save":"Save Window",
+"fp.title":"Choose {layer} fabric","fp.ph":"🔍 Type fabric code…",
+"fp.skip":"Decide later (assume {n} cm roll)","fp.none":"No fabric found. Check the code spelling.","fp.width":"width ?",
+"s3.phone":"Phone","s3.sales":"Salesperson","s3.date":"Order date","s3.auto":"(auto)",
+"s3.inst":"Installation","s3.loc":"Location","s3.gps":"✓ GPS saved",
+"s3.windows":"🪟 Windows ({n})","s3.disc":"Discount {p}% (auto)",
+"s3.nudge":"💡 Add {amt} more to unlock a <b>{p}% discount</b>.",
+"s3.fabric":"🧵 Fabric required (incl. 1 m safety each)","s3.nofabric":"No fabric products in this order",
+"s3.adv":"Advance received (AED, optional)","s3.pay":"Payment mode",
+"pay.Cash":"Cash","pay.Card":"Card","pay.Bank Transfer":"Bank Transfer","pay.Cheque":"Cheque",
+"s3.notes":"Order notes (optional)","s3.notes.ph":"Anything the production team should know…",
+"s3.back":"← Back to Windows","s3.submit":"✅ Confirm & Submit Order",
+"s3.confirm":"Submit this order for {c} — total {t}?",
+"ok.title":"Order confirmed","ok.disc":"({p}% discount applied)",
+"ok.sub":"Saved to the PFC database.<br>The team WhatsApp group is being notified automatically.",
+"ok.new":"＋ Start New Order"
+}},
+
+hi:{ui:{
+"app.sub":"सेल्स ऑर्डर ऐप",
+"step.1":"स्टेप 1 / 3 — ग्राहक","step.2":"स्टेप 2 / 3 — विंडो और प्रोडक्ट","step.3":"स्टेप 3 / 3 — जाँच और कन्फ़र्म",
+"tb.subtotal":"सबटोटल","tb.total":"कुल","tb.disc":"{p}% डिस्काउंट लगा 🎉","tb.continue":"आगे बढ़ें",
+"load":"लोड हो रहा है…","load.catalog":"कैटलॉग लोड हो रहा है…","load.fabrics":"फ़ैब्रिक लिस्ट लोड हो रही है…",
+"load.photo":"फ़ोटो अपलोड हो रही है…","load.submit":"ऑर्डर सबमिट हो रहा है…",
+"optional":"(ज़रूरी नहीं)","yes":"हाँ","no":"नहीं","none":"कोई नहीं",
+"s1.sales":"सेल्सपर्सन","s1.sales.ph":"अपना नाम लिखें",
+"s1.sales.hint":"लिस्ट से अपना नाम चुनें, या एक बार लिख दें — याद रह जाएगा।",
+"s1.cust":"ग्राहक का नाम","s1.cust.ph":"जैसे Mr. Ahmed Villa 12",
+"s1.phone":"ग्राहक का फ़ोन (ज़रूरी नहीं)","s1.phone.ph":"05x xxx xxxx",
+"s1.loc":"लोकेशन (ज़रूरी नहीं)","s1.gps.btn":"📍 GPS लें",
+"s1.gps.idle":"ग्राहक की लोकेशन सेव करने के लिए दबाएँ","s1.gps.saved":"✓ लोकेशन सेव हुई ({n} m)",
+"s1.gps.getting":"लोकेशन ली जा रही है…","s1.gps.denied":"लोकेशन नहीं मिली — फ़ोन की GPS परमिशन देखें",
+"s1.addr":"पता / एरिया (ज़रूरी नहीं)","s1.addr.ph":"जैसे International City, England Cluster X22",
+"s1.floor":"फ़्लोर (ज़रूरी नहीं)","s1.floor.ph":"जैसे Ground, 12","s1.lift":"लिफ़्ट है?",
+"s1.inst":"इंस्टॉलेशन की तारीख़ (ज़रूरी नहीं)","s1.next":"आगे: विंडो जोड़ें →",
+"t.gps.na":"इस फ़ोन में GPS नहीं है","t.gps.fail":"लोकेशन नहीं मिली: {m}",
+"t.need.sales":"कृपया सेल्सपर्सन का नाम लिखें","t.need.cust":"कृपया ग्राहक का नाम लिखें",
+"t.need.style":"कृपया प्रोडक्ट / स्टाइल चुनें","t.need.layer":"कृपया लेयर चुनें",
+"t.need.wh":"कृपया चौड़ाई और ऊँचाई cm में लिखें","t.need.window":"कम से कम एक विंडो जोड़ें",
+"t.load.fail":"डेटा लोड नहीं हुआ: {m}","t.photo.fail":"फ़ोटो अपलोड नहीं हुई: {m}",
+"t.submit.fail":"सबमिट नहीं हुआ: {m} — ऑर्डर ड्राफ़्ट में सेव है, दोबारा कोशिश करें।",
+"s2.empty":"अभी कोई विंडो नहीं जोड़ी।<br>पहली विंडो जोड़ने के लिए नीचे नारंगी बटन दबाएँ।",
+"s2.addons":"+{n} एड-ऑन","s2.edit":"✏️ बदलें","s2.copy":"📋 कॉपी","s2.del":"🗑 हटाएँ",
+"s2.add":"＋ विंडो जोड़ें","s2.back":"← ग्राहक पर वापस","s2.review":"ऑर्डर जाँचें →",
+"s2.addfirst":"पहले एक विंडो जोड़ें","s2.del.confirm":"यह विंडो हटाएँ?",
+"sheer":"शीयर","blackout":"ब्लैकआउट","tbd":"तय नहीं",
+"cn.win":"विंडो {b} + {l} बाएँ + {r} दाएँ = <b>{n} cm</b>","cn.win0":"विंडो चौड़ाई {n} cm (साइड एक्स्ट्रा नहीं)","cn.top":"+{n} cm विंडो से ऊपर","cn.uneven":"असमान {h} → {n}","cn.custsize":"⚠️ ग्राहक का नाप","cn.gather":"गैदर {n}×",
+"layer.sheer":"सिर्फ़ शीयर","layer.blackout":"सिर्फ़ ब्लैकआउट","layer.sheer_blackout":"शीयर + ब्लैकआउट",
+"we.add":"विंडो जोड़ें","we.edit":"विंडो बदलें","we.name":"विंडो का नाम","we.room":"कमरा",
+"we.product":"प्रोडक्ट","we.layers":"लेयर","we.from.m":"AED {p}/m चौड़ाई से","we.from.sqm":"AED {p}/m² से",
+"we.cover":"कहाँ तक कवर करना है?",
+"cov.w2w":"दीवार से दीवार","cov.win":"विंडो की चौड़ाई","cov.in":"फ़्रेम के अंदर",
+"cov.lbl.w2w":"दीवार से दीवार चौड़ाई (cm)","cov.lbl.win":"विंडो की चौड़ाई (cm)","cov.lbl.in":"फ़्रेम के अंदर की चौड़ाई (cm)",
+"cov.hint.w2w":"जितनी दीवार कवर करनी है। कम से कम 1 m का चार्ज लगेगा।",
+"cov.hint.win":"सिर्फ़ विंडो का नाप — साइड का एक्स्ट्रा नीचे लिखें।",
+"cov.hint.in":"फ़्रेम के अंदर सबसे कम चौड़ाई नापें।",
+"we.lx":"बाएँ एक्स्ट्रा (cm)","we.rx":"दाएँ एक्स्ट्रा (cm)",
+"we.extra.hint":"परदा हर तरफ़ विंडो से कितना आगे जाएगा। न हो तो 0 रहने दें।",
+"we.totalw":"📏 कुल चौड़ाई: {n} cm","we.totalw.sub":"{b} विंडो + {l} बाएँ + {r} दाएँ",
+"we.fixing":"फ़िक्सिंग",
+"we.uneven":"फ़र्श या छत बराबर नहीं है","we.uneven.sub":"बाएँ / बीच / दाएँ की ऊँचाई लिखें",
+"we.left":"बाएँ (cm)","we.mid":"बीच (cm)","we.right":"दाएँ (cm)",
+"we.hused":"📐 जो ऊँचाई ली गई: {n} cm",
+"we.hused.sub":"तीनों में सबसे कम — {d} cm का फ़र्क़ इंस्टॉलर के लिए नोट है",
+"we.uneven.hint":"तीनों ऊँचाई लिखें। सबसे कम वाली ली जाएगी ताकि परदा ज़मीन पर न घिसे।",
+"we.height":"ऊँचाई (cm)","we.height.ph":"जैसे 290","we.width.ph":"जैसे 240",
+"we.tx":"विंडो से ऊपर एक्स्ट्रा (cm)",
+"we.tx.hint":"ट्रैक विंडो से कितना ऊपर लगेगा। ऊँचाई में पहले से जोड़ा हो तो 0 रखें।",
+"we.totalh":"📐 कुल ऊँचाई: {n} cm","we.totalh.sub":"{b} + {t} विंडो से ऊपर",
+"we.tall.hint":"300 cm से ज़्यादा ऊँचाई पर रेट उसी हिसाब से बढ़ता है (× ऊँचाई ÷ 3)।",
+"we.pool":"फ़र्श पर परदे की लंबाई","pool.above":"फ़र्श से ऊपर","pool.touch":"फ़र्श छूता","pool.puddle":"फ़र्श पर फैला",
+"we.pool.a.hint":"फ़र्श से कितने cm ऊपर","we.pool.p.hint":"फ़र्श पर कितने cm फैलेगा",
+"we.meas":"नाप किसने लिया?","meas.team":"हमारी टीम","meas.cust":"ग्राहक ने नाप दिया",
+"we.open":"खुलने का तरीक़ा","open.mid":"बीच से","open.one":"एक तरफ़",
+"we.overlap":"बीच का ओवरलैप (cm)","we.overlap.hint":"बीच में दोनों पल्ले कितना एक-दूसरे पर चढ़ेंगे।",
+"we.track":"ट्रैक का रंग",
+"we.track.free":"सफ़ेद ट्रैक फ्री है। काले ट्रैक का AED 40 प्रति मीटर चौड़ाई लगेगा।",
+"we.track.calc":"काला ट्रैक: AED 40 × {m} m = <b>{amt}</b>",
+"we.tie":"टाई बेल्ट","tie.none":"नहीं चाहिए","tie.velcro":"वेल्क्रो","tie.hooks":"हुक वाला",
+"we.tie.hint":"फ्री है, परदे वाले ही कपड़े में।",
+"we.side":"किस तरफ़?","we.hookfin":"हुक का फ़िनिश",
+"we.photos":"इस विंडो की फ़ोटो","we.cam":"📷 फ़ोटो लें / जोड़ें",
+"we.photos.hint":"फ़ोटो से बाद में बहुत समझाना बच जाता है — बीम, सॉकेट, स्कर्टिंग, पुराना ट्रैक।",
+"we.fabric":"कपड़ा","we.fab.pick":"🔍 {layer} का कपड़ा चुनें (या बाद में तय करें)",
+"we.fab.set":"✓ {code} — रोल चौड़ाई {w} cm",
+"we.fab.need":"🧵 <b>कितना कपड़ा लगेगा (1 m सेफ़्टी सहित):</b>",
+"we.fab.none":"(कपड़ा तय नहीं — {n} cm माना गया)","we.fab.roll2":"रोल {n} cm","we.fab.assumed":" माना गया",
+"acc.addons":"➕ इस विंडो के एड-ऑन","acc.site":"🏠 साइट की जानकारी (ज़रूरी नहीं)","acc.finish":"🧷 फ़िनिशिंग की जानकारी (ज़रूरी नहीं)",
+"acc.added":"{n} लगे","acc.set":"{n} भरे",
+"addon.free":" — फ्री","addon.perm":"AED {p}/m चौड़ाई","addon.warranty":"{p} — 7 साल वारंटी",
+"unit.stick":"प्रति स्टिक","unit.side":"प्रति साइड","unit.meter":"प्रति मीटर","unit.curtain":"प्रति परदा",
+"we.velcro.mid":"बीच में एक्स्ट्रा पीस",
+"we.ceiling":"छत / दीवार का मटीरियल","we.ceiling.hint":"टीम को पता चलेगा कौन सी ड्रिल और ब्रैकेट लानी है।",
+"we.skirt":"स्कर्टिंग की ऊँचाई (cm)","we.pocket":"पॉकेट की गहराई (cm)","we.shape":"विंडो का शेप",
+"we.shape.hint":"⚠️ आम तौर पर बेंड रेल लगती है — एड-ऑन में जोड़ें।",
+"we.motorside":"मोटर किस तरफ़","we.socket":"पास में सॉकेट है","we.socket.sub":"ट्रैक तक तार पहुँच जाए",
+"we.trunk":"तार छिपाने की ट्रंकिंग चाहिए","we.trunk.sub":"मोटर का तार छिपाने के लिए",
+"we.existing":"इस विंडो पर पहले से लगा है","we.howmany":"कितने","we.howmany.sub":"कितने परदे / ब्लाइंड्स",
+"we.whattodo":"इसका क्या करना है","act.remove":"हटाना है","act.reuse":"दोबारा लगाना है","act.leave":"जैसा है वैसा",
+"we.full":"गैदर / फुलनेस बदलें","we.full.ph":"आम तौर पर {n}× — खाली छोड़ें",
+"we.full.hint":"सिर्फ़ तब जब ग्राहक ने ज़्यादा या कम गैदर माँगा हो। इससे कपड़े का हिसाब बदलेगा।",
+"we.notes":"इस विंडो के लिए नोट (ज़रूरी नहीं)","we.notes.ph":"कुछ ख़ास हो तो लिखें…",
+"we.this":"यह विंडो","we.save":"विंडो सेव करें",
+"fp.title":"{layer} का कपड़ा चुनें","fp.ph":"🔍 फ़ैब्रिक कोड लिखें…",
+"fp.skip":"बाद में तय करें ({n} cm रोल मानें)","fp.none":"कोई फ़ैब्रिक नहीं मिला। कोड की स्पेलिंग देखें।","fp.width":"चौड़ाई ?",
+"s3.phone":"फ़ोन","s3.sales":"सेल्सपर्सन","s3.date":"ऑर्डर की तारीख़","s3.auto":"(अपने आप)",
+"s3.inst":"इंस्टॉलेशन","s3.loc":"लोकेशन","s3.gps":"✓ GPS सेव है",
+"s3.windows":"🪟 विंडो ({n})","s3.disc":"डिस्काउंट {p}% (अपने आप)",
+"s3.nudge":"💡 {amt} और जोड़ें तो <b>{p}% डिस्काउंट</b> मिलेगा।",
+"s3.fabric":"🧵 कितना कपड़ा लगेगा (हर एक में 1 m सेफ़्टी सहित)","s3.nofabric":"इस ऑर्डर में कपड़े वाला कोई प्रोडक्ट नहीं",
+"s3.adv":"एडवांस मिला (AED, ज़रूरी नहीं)","s3.pay":"पेमेंट का तरीक़ा",
+"pay.Cash":"कैश","pay.Card":"कार्ड","pay.Bank Transfer":"बैंक ट्रांसफ़र","pay.Cheque":"चेक",
+"s3.notes":"ऑर्डर के नोट (ज़रूरी नहीं)","s3.notes.ph":"प्रोडक्शन टीम को कुछ बताना हो तो…",
+"s3.back":"← विंडो पर वापस","s3.submit":"✅ कन्फ़र्म करके ऑर्डर भेजें",
+"s3.confirm":"{c} का यह ऑर्डर भेजें — कुल {t}?",
+"ok.title":"ऑर्डर कन्फ़र्म हो गया","ok.disc":"({p}% डिस्काउंट लगा)",
+"ok.sub":"PFC डेटाबेस में सेव हो गया।<br>टीम के WhatsApp ग्रुप में अपने आप मैसेज जा रहा है।",
+"ok.new":"＋ नया ऑर्डर शुरू करें"
+},v:{
+"Living Room":"लिविंग रूम","Master Bedroom":"मास्टर बेडरूम","Bedroom 2":"बेडरूम 2","Bedroom 3":"बेडरूम 3",
+"Kids Room":"बच्चों का कमरा","Majlis":"मजलिस","Dining":"डाइनिंग","Kitchen":"किचन","Office":"ऑफ़िस",
+"Balcony Door":"बालकनी का दरवाज़ा","Other":"और कोई",
+"Wall":"दीवार","Ceiling":"छत","White":"सफ़ेद","Black":"काला",
+"Left":"बाएँ","Right":"दाएँ","Both":"दोनों",
+"Gold":"गोल्ड","Nickel":"निकल","Silver":"सिल्वर",
+"Gypsum":"जिप्सम","Concrete":"कंक्रीट","Marble":"मार्बल","Wood":"लकड़ी",
+"Straight":"सीधा","Curved":"गोल","L-shape":"L शेप","Bay":"बे विंडो",
+"Curtains":"परदे","Blinds":"ब्लाइंड्स","Track only":"सिर्फ़ ट्रैक"
+}},
+
+bn:{ui:{
+"app.sub":"সেলস অর্ডার অ্যাপ",
+"step.1":"ধাপ 1 / 3 — কাস্টমার","step.2":"ধাপ 2 / 3 — জানালা ও প্রোডাক্ট","step.3":"ধাপ 3 / 3 — চেক ও কনফার্ম",
+"tb.subtotal":"সাবটোটাল","tb.total":"মোট","tb.disc":"{p}% ডিসকাউন্ট লেগেছে 🎉","tb.continue":"এগিয়ে যান",
+"load":"লোড হচ্ছে…","load.catalog":"ক্যাটালগ লোড হচ্ছে…","load.fabrics":"ফেব্রিক লিস্ট লোড হচ্ছে…",
+"load.photo":"ছবি আপলোড হচ্ছে…","load.submit":"অর্ডার সাবমিট হচ্ছে…",
+"optional":"(ঐচ্ছিক)","yes":"হ্যাঁ","no":"না","none":"কিছু নেই",
+"s1.sales":"সেলসপার্সন","s1.sales.ph":"আপনার নাম লিখুন",
+"s1.sales.hint":"লিস্ট থেকে নাম বেছে নিন, বা একবার লিখে দিন — মনে থাকবে।",
+"s1.cust":"কাস্টমারের নাম","s1.cust.ph":"যেমন Mr. Ahmed Villa 12",
+"s1.phone":"কাস্টমারের ফোন (ঐচ্ছিক)","s1.phone.ph":"05x xxx xxxx",
+"s1.loc":"লোকেশন (ঐচ্ছিক)","s1.gps.btn":"📍 GPS নিন",
+"s1.gps.idle":"কাস্টমারের লোকেশন সেভ করতে চাপ দিন","s1.gps.saved":"✓ লোকেশন সেভ হয়েছে ({n} m)",
+"s1.gps.getting":"লোকেশন নেওয়া হচ্ছে…","s1.gps.denied":"লোকেশন পাওয়া যায়নি — ফোনের GPS পারমিশন দেখুন",
+"s1.addr":"ঠিকানা / এরিয়া (ঐচ্ছিক)","s1.addr.ph":"যেমন International City, England Cluster X22",
+"s1.floor":"ফ্লোর (ঐচ্ছিক)","s1.floor.ph":"যেমন Ground, 12","s1.lift":"লিফট আছে?",
+"s1.inst":"ইনস্টলেশনের তারিখ (ঐচ্ছিক)","s1.next":"পরের ধাপ: জানালা যোগ করুন →",
+"t.gps.na":"এই ফোনে GPS নেই","t.gps.fail":"লোকেশন পাওয়া যায়নি: {m}",
+"t.need.sales":"সেলসপার্সনের নাম লিখুন","t.need.cust":"কাস্টমারের নাম লিখুন",
+"t.need.style":"প্রোডাক্ট / স্টাইল বেছে নিন","t.need.layer":"লেয়ার বেছে নিন",
+"t.need.wh":"চওড়া ও উচ্চতা cm-এ লিখুন","t.need.window":"অন্তত একটি জানালা যোগ করুন",
+"t.load.fail":"ডেটা লোড হয়নি: {m}","t.photo.fail":"ছবি আপলোড হয়নি: {m}",
+"t.submit.fail":"সাবমিট হয়নি: {m} — অর্ডার ড্রাফটে সেভ আছে, আবার চেষ্টা করুন।",
+"s2.empty":"এখনও কোনো জানালা যোগ করা হয়নি।<br>প্রথম জানালা যোগ করতে নিচের কমলা বাটনে চাপ দিন।",
+"s2.addons":"+{n} অ্যাড-অন","s2.edit":"✏️ এডিট","s2.copy":"📋 কপি","s2.del":"🗑 ডিলিট",
+"s2.add":"＋ জানালা যোগ করুন","s2.back":"← কাস্টমারে ফিরুন","s2.review":"অর্ডার চেক করুন →",
+"s2.addfirst":"আগে একটি জানালা যোগ করুন","s2.del.confirm":"এই জানালা ডিলিট করবেন?",
+"sheer":"শিয়ার","blackout":"ব্ল্যাকআউট","tbd":"ঠিক হয়নি",
+"cn.win":"জানালা {b} + {l} বাম + {r} ডান = <b>{n} cm</b>","cn.win0":"জানালার চওড়া {n} cm (সাইড এক্সট্রা নেই)","cn.top":"+{n} cm জানালার উপরে","cn.uneven":"অসমান {h} → {n}","cn.custsize":"⚠️ কাস্টমারের মাপ","cn.gather":"গ্যাদার {n}×",
+"layer.sheer":"শুধু শিয়ার","layer.blackout":"শুধু ব্ল্যাকআউট","layer.sheer_blackout":"শিয়ার + ব্ল্যাকআউট",
+"we.add":"জানালা যোগ করুন","we.edit":"জানালা এডিট","we.name":"জানালার নাম","we.room":"রুম",
+"we.product":"প্রোডাক্ট","we.layers":"লেয়ার","we.from.m":"AED {p}/m চওড়া থেকে","we.from.sqm":"AED {p}/m² থেকে",
+"we.cover":"কতদূর কভার করবে?",
+"cov.w2w":"দেয়াল থেকে দেয়াল","cov.win":"জানালার চওড়া","cov.in":"ফ্রেমের ভিতরে",
+"cov.lbl.w2w":"দেয়াল থেকে দেয়াল চওড়া (cm)","cov.lbl.win":"জানালার চওড়া (cm)","cov.lbl.in":"ফ্রেমের ভিতরের চওড়া (cm)",
+"cov.hint.w2w":"যতটা দেয়াল কভার করতে হবে। কমপক্ষে 1 m চার্জ হবে।",
+"cov.hint.win":"শুধু জানালার মাপ — সাইডের এক্সট্রা নিচে লিখুন।",
+"cov.hint.in":"ফ্রেমের ভিতরে সবচেয়ে কম চওড়া মাপুন।",
+"we.lx":"বাম দিকে এক্সট্রা (cm)","we.rx":"ডান দিকে এক্সট্রা (cm)",
+"we.extra.hint":"পর্দা দুই পাশে জানালার বাইরে কতটা যাবে। না থাকলে 0 রাখুন।",
+"we.totalw":"📏 মোট চওড়া: {n} cm","we.totalw.sub":"{b} জানালা + {l} বাম + {r} ডান",
+"we.fixing":"ফিক্সিং",
+"we.uneven":"মেঝে বা সিলিং সমান নয়","we.uneven.sub":"বাম / মাঝ / ডান উচ্চতা লিখুন",
+"we.left":"বাম (cm)","we.mid":"মাঝ (cm)","we.right":"ডান (cm)",
+"we.hused":"📐 যে উচ্চতা নেওয়া হলো: {n} cm",
+"we.hused.sub":"তিনটির মধ্যে সবচেয়ে কম — {d} cm পার্থক্য ইনস্টলারের জন্য নোট করা আছে",
+"we.uneven.hint":"তিনটি উচ্চতাই লিখুন। সবচেয়ে কমটা নেওয়া হবে যাতে পর্দা মেঝেতে না ঘষে।",
+"we.height":"উচ্চতা (cm)","we.height.ph":"যেমন 290","we.width.ph":"যেমন 240",
+"we.tx":"জানালার উপরে এক্সট্রা (cm)",
+"we.tx.hint":"ট্র্যাক জানালার কত উপরে বসবে। উচ্চতায় আগেই ধরা থাকলে 0 রাখুন।",
+"we.totalh":"📐 মোট উচ্চতা: {n} cm","we.totalh.sub":"{b} + {t} জানালার উপরে",
+"we.tall.hint":"300 cm-এর বেশি উচ্চতায় রেট সেই অনুপাতে বাড়ে (× উচ্চতা ÷ 3)।",
+"we.pool":"মেঝেতে পর্দার ঝুল","pool.above":"মেঝের উপরে","pool.touch":"মেঝে ছোঁয়া","pool.puddle":"মেঝেতে ছড়ানো",
+"we.pool.a.hint":"মেঝে থেকে কত cm উপরে","we.pool.p.hint":"মেঝেতে কত cm ছড়াবে",
+"we.meas":"মাপ কে নিয়েছে?","meas.team":"আমাদের টিম","meas.cust":"কাস্টমার মাপ দিয়েছে",
+"we.open":"খোলার ধরন","open.mid":"মাঝ থেকে","open.one":"এক পাশে",
+"we.overlap":"মাঝের ওভারল্যাপ (cm)","we.overlap.hint":"মাঝখানে দুই পাল্লা কতটা একটার উপর আরেকটা থাকবে।",
+"we.track":"ট্র্যাকের রং",
+"we.track.free":"সাদা ট্র্যাক ফ্রি। কালো ট্র্যাকে চওড়ার প্রতি মিটারে AED 40 লাগবে।",
+"we.track.calc":"কালো ট্র্যাক: AED 40 × {m} m = <b>{amt}</b>",
+"we.tie":"টাই বেল্ট","tie.none":"লাগবে না","tie.velcro":"ভেলক্রো","tie.hooks":"হুক সহ",
+"we.tie.hint":"ফ্রি, পর্দার একই কাপড়ে।",
+"we.side":"কোন পাশে?","we.hookfin":"হুকের ফিনিশ",
+"we.photos":"এই জানালার ছবি","we.cam":"📷 ছবি তুলুন / যোগ করুন",
+"we.photos.hint":"ছবি থাকলে পরে অনেক বোঝানো বেঁচে যায় — বিম, সকেট, স্কার্টিং, পুরনো ট্র্যাক।",
+"we.fabric":"কাপড়","we.fab.pick":"🔍 {layer} কাপড় বেছে নিন (বা পরে ঠিক করুন)",
+"we.fab.set":"✓ {code} — রোল চওড়া {w} cm",
+"we.fab.need":"🧵 <b>কত কাপড় লাগবে (1 m সেফটি সহ):</b>",
+"we.fab.none":"(কাপড় ঠিক হয়নি — {n} cm ধরা হয়েছে)","we.fab.roll2":"রোল {n} cm","we.fab.assumed":" ধরা হয়েছে",
+"acc.addons":"➕ এই জানালার অ্যাড-অন","acc.site":"🏠 সাইটের তথ্য (ঐচ্ছিক)","acc.finish":"🧷 ফিনিশিং তথ্য (ঐচ্ছিক)",
+"acc.added":"{n} যোগ হয়েছে","acc.set":"{n} দেওয়া আছে",
+"addon.free":" — ফ্রি","addon.perm":"AED {p}/m চওড়া","addon.warranty":"{p} — 7 বছর ওয়ারেন্টি",
+"unit.stick":"প্রতি স্টিক","unit.side":"প্রতি সাইড","unit.meter":"প্রতি মিটার","unit.curtain":"প্রতি পর্দা",
+"we.velcro.mid":"মাঝে এক্সট্রা পিস",
+"we.ceiling":"সিলিং / দেয়ালের ম্যাটেরিয়াল","we.ceiling.hint":"টিম জানবে কোন ড্রিল ও ব্র্যাকেট আনতে হবে।",
+"we.skirt":"স্কার্টিং উচ্চতা (cm)","we.pocket":"পকেটের গভীরতা (cm)","we.shape":"জানালার শেপ",
+"we.shape.hint":"⚠️ সাধারণত বেন্ড রেল লাগে — অ্যাড-অনে যোগ করুন।",
+"we.motorside":"মোটর কোন পাশে","we.socket":"কাছে সকেট আছে","we.socket.sub":"ট্র্যাক পর্যন্ত তার পৌঁছাবে",
+"we.trunk":"তার লুকানোর ট্রাঙ্কিং লাগবে","we.trunk.sub":"মোটরের তার লুকানোর জন্য",
+"we.existing":"এই জানালায় আগে থেকে লাগানো আছে","we.howmany":"কতগুলো","we.howmany.sub":"কতগুলো পর্দা / ব্লাইন্ড",
+"we.whattodo":"এটা নিয়ে কী করবেন","act.remove":"খুলে ফেলুন","act.reuse":"আবার ব্যবহার","act.leave":"যেমন আছে থাক",
+"we.full":"গ্যাদার / ফুলনেস বদলান","we.full.ph":"সাধারণত {n}× — খালি রাখুন",
+"we.full.hint":"শুধু যদি কাস্টমার বেশি বা কম গ্যাদার চান। এতে কাপড়ের হিসাব বদলাবে।",
+"we.notes":"এই জানালার জন্য নোট (ঐচ্ছিক)","we.notes.ph":"বিশেষ কিছু থাকলে লিখুন…",
+"we.this":"এই জানালা","we.save":"জানালা সেভ করুন",
+"fp.title":"{layer} কাপড় বেছে নিন","fp.ph":"🔍 ফেব্রিক কোড লিখুন…",
+"fp.skip":"পরে ঠিক করুন ({n} cm রোল ধরা হবে)","fp.none":"কোনো ফেব্রিক পাওয়া যায়নি। কোডের বানান দেখুন।","fp.width":"চওড়া ?",
+"s3.phone":"ফোন","s3.sales":"সেলসপার্সন","s3.date":"অর্ডারের তারিখ","s3.auto":"(অটো)",
+"s3.inst":"ইনস্টলেশন","s3.loc":"লোকেশন","s3.gps":"✓ GPS সেভ আছে",
+"s3.windows":"🪟 জানালা ({n})","s3.disc":"ডিসকাউন্ট {p}% (অটো)",
+"s3.nudge":"💡 আর {amt} যোগ করলে <b>{p}% ডিসকাউন্ট</b> পাবেন।",
+"s3.fabric":"🧵 কত কাপড় লাগবে (প্রতিটিতে 1 m সেফটি সহ)","s3.nofabric":"এই অর্ডারে কাপড়ের কোনো প্রোডাক্ট নেই",
+"s3.adv":"অ্যাডভান্স পেয়েছেন (AED, ঐচ্ছিক)","s3.pay":"পেমেন্টের ধরন",
+"pay.Cash":"ক্যাশ","pay.Card":"কার্ড","pay.Bank Transfer":"ব্যাংক ট্রান্সফার","pay.Cheque":"চেক",
+"s3.notes":"অর্ডারের নোট (ঐচ্ছিক)","s3.notes.ph":"প্রোডাকশন টিমকে কিছু জানানোর থাকলে…",
+"s3.back":"← জানালায় ফিরুন","s3.submit":"✅ কনফার্ম করে অর্ডার পাঠান",
+"s3.confirm":"{c}-এর এই অর্ডার পাঠাবেন — মোট {t}?",
+"ok.title":"অর্ডার কনফার্ম হয়েছে","ok.disc":"({p}% ডিসকাউন্ট লেগেছে)",
+"ok.sub":"PFC ডেটাবেসে সেভ হয়েছে।<br>টিমের WhatsApp গ্রুপে অটো মেসেজ যাচ্ছে।",
+"ok.new":"＋ নতুন অর্ডার শুরু করুন"
+},v:{
+"Living Room":"লিভিং রুম","Master Bedroom":"মাস্টার বেডরুম","Bedroom 2":"বেডরুম 2","Bedroom 3":"বেডরুম 3",
+"Kids Room":"বাচ্চাদের রুম","Majlis":"মজলিস","Dining":"ডাইনিং","Kitchen":"কিচেন","Office":"অফিস",
+"Balcony Door":"বারান্দার দরজা","Other":"অন্য কোনো",
+"Wall":"দেয়াল","Ceiling":"সিলিং","White":"সাদা","Black":"কালো",
+"Left":"বাম","Right":"ডান","Both":"দুই পাশে",
+"Gold":"গোল্ড","Nickel":"নিকেল","Silver":"সিলভার",
+"Gypsum":"জিপসাম","Concrete":"কংক্রিট","Marble":"মার্বেল","Wood":"কাঠ",
+"Straight":"সোজা","Curved":"বাঁকা","L-shape":"L শেপ","Bay":"বে উইন্ডো",
+"Curtains":"পর্দা","Blinds":"ব্লাইন্ড","Track only":"শুধু ট্র্যাক"
+}}
+};
+
+// interface copy; falls back to English rather than rendering blank
+function tr(k, p){
+  let s = (I18N[LANG] && I18N[LANG].ui && I18N[LANG].ui[k]) || I18N.en.ui[k] || k;
+  if(p) for(const key in p) s = s.split("{"+key+"}").join(p[key]);
+  return s;
+}
+// canonical English VALUE -> display label. English needs no map: the value is the label.
+function layerName(l){ return l ? tr("layer."+l) : ""; }
+function tv(v){ return (I18N[LANG] && I18N[LANG].v && I18N[LANG].v[v]) || v; }
+
 const PHOTO_BUCKET = "window-photos";
 const PHOTO_MAX_PX = 1280;           // downscale before upload — salespeople are on mobile data
 const CEILING_MATERIALS = ["Gypsum","Concrete","Marble","Wood","Other"];
@@ -329,7 +688,7 @@ async function uploadPhoto(file){
 
 /* ================= DATA LOAD ================= */
 async function bootstrap(){
-  loading(true, "Loading catalog…");
+  loading(true, tr("load.catalog"));
   try{
     const [cat, sp] = await Promise.all([
       api("/rest/v1/product_catalog?select=code,name,category,style,layer_type,unit,price,tall_window_rule,uses_fabric,sort_order&is_active=eq.true&order=sort_order"),
@@ -341,7 +700,7 @@ async function bootstrap(){
     try{ fc = JSON.parse(localStorage.getItem("pfc_fabrics_v1")||"null"); }catch(e){}
     if(fc && Date.now()-fc.t < 24*3600*1000 && Array.isArray(fc.d) && fc.d.length){ FABRICS = fc.d; }
     else{
-      loading(true, "Loading fabric list…");
+      loading(true, tr("load.fabrics"));
       const rows = [];
       for(let off=0;;off+=1000){                       // PostgREST caps at 1000 rows/request
         const page = await api("/rest/v1/fabrics?select=fabric_code,roll_width_cm&order=fabric_code",
@@ -359,7 +718,7 @@ async function bootstrap(){
         state.windows = (state.windows||[]).map(w=>applyGeometry(normalizeWin(w))); } }catch(e){}
     const lastSp = localStorage.getItem("pfc_salesperson");
     if(lastSp && !state.salesperson) state.salesperson = lastSp;
-  }catch(e){ toast("Could not load data: "+e.message); }
+  }catch(e){ toast(tr("t.load.fail",{m:e.message})); }
   loading(false);
   render();
 }
@@ -470,16 +829,17 @@ function coverageNote(w){
   const bits = [];
   if(w.coverage==="window_width"){
     const lx=+w.left_extra_cm||0, rx=+w.right_extra_cm||0;
-    bits.push(`Window width ${+w.base_width_cm||0}` + (lx||rx?` + ${lx} left + ${rx} right = <b>${w.width_cm} cm</b>`:` cm (no side extra)`));
-  } else if(w.coverage==="inside_frame"){ bits.push("Inside frame"); }
-  else { bits.push("Wall to wall"); }
-  if(w.fixing==="Wall" && +w.top_extra_cm>0) bits.push(`+${+w.top_extra_cm} cm above window`);
+    bits.push(lx||rx ? tr("cn.win",{b:+w.base_width_cm||0, l:lx, r:rx, n:w.width_cm})
+                     : tr("cn.win0",{n:w.width_cm}));
+  } else if(w.coverage==="inside_frame"){ bits.push(tr("cov.in")); }
+  else { bits.push(tr("cov.w2w")); }
+  if(w.fixing==="Wall" && +w.top_extra_cm>0) bits.push(tr("cn.top",{n:+w.top_extra_cm}));
   if(w.uneven){
     const hs=[w.height_left_cm,w.height_middle_cm,w.height_right_cm].map(x=>+x).filter(x=>x>0);
-    if(hs.length>1) bits.push(`uneven ${hs.join("/")} → ${Math.min(...hs)}`);
+    if(hs.length>1) bits.push(tr("cn.uneven",{h:hs.join("/"), n:Math.min(...hs)}));
   }
-  if(w.measured_by==="customer") bits.push("⚠️ customer's sizes");
-  if(+w.fullness_override>0) bits.push(`gather ${+w.fullness_override}×`);
+  if(w.measured_by==="customer") bits.push(tr("cn.custsize"));
+  if(+w.fullness_override>0) bits.push(tr("cn.gather",{n:+w.fullness_override}));
   return bits.join(" · ");
 }
 
@@ -504,12 +864,30 @@ function fabricSummary(){
 function render(){
   const dots = $("#stepdots").children;
   for(let i=0;i<3;i++) dots[i].classList.toggle("on", i < state.step);
-  $("#stepname").textContent = state.step===1 ? "Step 1 of 3 — Customer"
-    : state.step===2 ? "Step 2 of 3 — Windows & Products" : "Step 3 of 3 — Review & Confirm";
+  $("#stepname").textContent = tr("step."+state.step);
   if(state.step===1) renderStep1();
   if(state.step===2) renderStep2();
   if(state.step===3) renderStep3();
   saveDraft();
+}
+
+/* Static shell outside #main — repainted when the language changes. */
+function paintChrome(){
+  document.documentElement.lang = LANG;
+  $("#langsel").value = LANG;
+  $("#hdr_sub").textContent = tr("app.sub");
+  $("#tb_l1").textContent = tr("tb.subtotal");
+  $("#loadmsg").textContent = tr("load");
+  $("#stepname").textContent = tr("step."+state.step);
+}
+
+function setLang(code){
+  LANG = code;
+  try{ localStorage.setItem("pfc_lang", code); }catch(e){}
+  paintChrome();
+  render();
+  if($("#winov")) drawWinEditor();      // keeps scroll position
+  if($("#fab_root")) $("#fab_root").remove();
 }
 
 function totbar(show, btnLabel, handler){
@@ -519,7 +897,7 @@ function totbar(show, btnLabel, handler){
   tb.style.display="block";
   $("#tb_v1").textContent = fmt(t.sub);
   const dr = $("#tb_discrow");
-  if(t.pct>0){ dr.style.display="flex"; $("#tb_l2").textContent = "Discount "+t.pct+"% applied 🎉";
+  if(t.pct>0){ dr.style.display="flex"; $("#tb_l2").textContent = tr("tb.disc",{p:t.pct});
     $("#tb_v2").textContent = "− "+fmt(t.disc); } else dr.style.display="none";
   $("#tb_tot").textContent = fmt(t.total);
   const b = $("#tb_btn"); b.textContent = btnLabel; b.onclick = handler;
@@ -531,39 +909,39 @@ function renderStep1(){
   const m = $("#main");
   m.innerHTML = `
   <div class="card">
-    <label class="f">Salesperson <span class="req">*</span></label>
-    <input type="text" id="f_sales" list="spl" placeholder="Type your name" value="${esc(state.salesperson)}" autocomplete="off">
+    <label class="f">${tr("s1.sales")} <span class="req">*</span></label>
+    <input type="text" id="f_sales" list="spl" placeholder="${tr("s1.sales.ph")}" value="${esc(state.salesperson)}" autocomplete="off">
     <datalist id="spl">${SALESPEOPLE.map(s=>`<option value="${esc(s)}">`).join("")}</datalist>
-    <div class="hint">Pick your name from the list, or type it once — it will be remembered.</div>
+    <div class="hint">${tr("s1.sales.hint")}</div>
 
-    <label class="f">Customer name <span class="req">*</span></label>
-    <input type="text" id="f_cust" placeholder="e.g. Mr. Ahmed Villa 12" value="${esc(state.customer_name)}">
+    <label class="f">${tr("s1.cust")} <span class="req">*</span></label>
+    <input type="text" id="f_cust" placeholder="${tr("s1.cust.ph")}" value="${esc(state.customer_name)}">
 
-    <label class="f">Customer phone (optional)</label>
-    <input type="tel" id="f_phone" inputmode="tel" placeholder="05x xxx xxxx" value="${esc(state.customer_phone)}">
+    <label class="f">${tr("s1.phone")}</label>
+    <input type="tel" id="f_phone" inputmode="tel" placeholder="${tr("s1.phone.ph")}" value="${esc(state.customer_phone)}">
   </div>
 
   <div class="card">
-    <label class="f">Location (optional)</label>
+    <label class="f">${tr("s1.loc")}</label>
     <div class="gpsbox">
-      <button class="btn ghost small" id="f_gpsbtn">📍 Capture GPS</button>
-      <div class="st ${state.gps?"ok":""}" id="f_gpsst">${state.gps ? "✓ Location saved ("+state.gps.acc+" m)" : "Tap to save the customer's location"}</div>
+      <button class="btn ghost small" id="f_gpsbtn">${tr("s1.gps.btn")}</button>
+      <div class="st ${state.gps?"ok":""}" id="f_gpsst">${state.gps ? tr("s1.gps.saved",{n:state.gps.acc}) : tr("s1.gps.idle")}</div>
     </div>
-    <label class="f">Address / Area (optional)</label>
-    <input type="text" id="f_addr" placeholder="e.g. International City, England Cluster X22" value="${esc(state.address)}">
+    <label class="f">${tr("s1.addr")}</label>
+    <input type="text" id="f_addr" placeholder="${tr("s1.addr.ph")}" value="${esc(state.address)}">
     <div class="two">
-      <div><label class="f">Floor (optional)</label>
-        <input type="text" id="f_floor" placeholder="e.g. Ground, 12" value="${esc(state.floor_number||"")}"></div>
-      <div><label class="f">Lift available?</label>
+      <div><label class="f">${tr("s1.floor")}</label>
+        <input type="text" id="f_floor" placeholder="${tr("s1.floor.ph")}" value="${esc(state.floor_number||"")}"></div>
+      <div><label class="f">${tr("s1.lift")}</label>
         <div class="seg" id="f_lift" style="margin-top:6px">
-          <button data-v="1" class="${state.lift_available===true?"on":""}">Yes</button>
-          <button data-v="0" class="${state.lift_available===false?"on":""}">No</button>
+          <button data-v="1" class="${state.lift_available===true?"on":""}">${tr("yes")}</button>
+          <button data-v="0" class="${state.lift_available===false?"on":""}">${tr("no")}</button>
         </div></div>
     </div>
-    <label class="f">Intended installation date (optional)</label>
+    <label class="f">${tr("s1.inst")}</label>
     <input type="date" id="f_inst" min="${new Date().toISOString().slice(0,10)}" value="${esc(state.installation_date)}">
   </div>
-  <button class="btn primary" id="s1next">Next: Add Windows →</button>`;
+  <button class="btn primary" id="s1next">${tr("s1.next")}</button>`;
 
   $("#f_lift").querySelectorAll("button").forEach(b=>b.onclick=()=>{
     const v = b.dataset.v==="1";
@@ -572,16 +950,16 @@ function renderStep1(){
     renderStep1(); });
 
   $("#f_gpsbtn").onclick = ()=>{
-    if(!navigator.geolocation){ toast("GPS not available on this phone"); return; }
-    $("#f_gpsst").textContent = "Getting location…";
+    if(!navigator.geolocation){ toast(tr("t.gps.na")); return; }
+    $("#f_gpsst").textContent = tr("s1.gps.getting");
     navigator.geolocation.getCurrentPosition(pos=>{
       const {latitude:la, longitude:lo, accuracy} = pos.coords;
       state.gps = {lat:la, lng:lo, acc:Math.round(accuracy)};
       state.location_url = "https://maps.google.com/?q="+la.toFixed(6)+","+lo.toFixed(6);
-      const s=$("#f_gpsst"); s.textContent = "✓ Location saved ("+state.gps.acc+" m)"; s.classList.add("ok");
+      const s=$("#f_gpsst"); s.textContent = tr("s1.gps.saved",{n:state.gps.acc}); s.classList.add("ok");
       saveDraft();
-    }, err=>{ $("#f_gpsst").textContent = "Could not get location — check phone GPS permission";
-      toast("Location failed: "+err.message); }, {enableHighAccuracy:true, timeout:12000});
+    }, err=>{ $("#f_gpsst").textContent = tr("s1.gps.denied");
+      toast(tr("t.gps.fail",{m:err.message})); }, {enableHighAccuracy:true, timeout:12000});
   };
   $("#s1next").onclick = ()=>{
     state.salesperson = $("#f_sales").value.trim();
@@ -590,8 +968,8 @@ function renderStep1(){
     state.address = $("#f_addr").value.trim();
     state.floor_number = $("#f_floor").value.trim();
     state.installation_date = $("#f_inst").value;
-    if(!state.salesperson){ toast("Please enter the salesperson name"); return; }
-    if(!state.customer_name){ toast("Please enter the customer name"); return; }
+    if(!state.salesperson){ toast(tr("t.need.sales")); return; }
+    if(!state.customer_name){ toast(tr("t.need.cust")); return; }
     localStorage.setItem("pfc_salesperson", state.salesperson);
     state.step = 2; render(); window.scrollTo(0,0);
   };
@@ -603,32 +981,32 @@ function renderStep2(){
   let html = "";
   if(state.windows.length===0){
     html += `<div class="card" style="text-align:center;color:var(--muted);padding:30px 16px">
-      No windows added yet.<br>Tap the big orange button to add the first window.</div>`;
+      ${tr("s2.empty")}</div>`;
   }
   state.windows.forEach((w,i)=>{
     const p = windowPrice(w);
     const meta = STYLE_META[w.style]||{nm:w.style};
     const fabs = windowFabrics(w);
-    const fabtxt = fabs.map(f=>`${f.layer==="sheer"?"Sheer":"Blackout"}: ${f.code?esc(f.code):"TBD"} → <b>${f.meters} m</b>`).join("<br>");
+    const fabtxt = fabs.map(f=>`${tr(f.layer==="sheer"?"sheer":"blackout")}: ${f.code?esc(f.code):tr("tbd")} → <b>${f.meters} m</b>`).join("<br>");
     html += `<div class="wincard">
-      <div class="top"><div class="nm">${esc(w.window_name||("W"+(i+1)))} · ${esc(w.room||"")}</div>
+      <div class="top"><div class="nm">${esc(w.window_name||("W"+(i+1)))} · ${esc(tv(w.room||""))}</div>
         <div class="pill">${esc(meta.nm)}</div></div>
-      <div class="det">${w.width_cm}×${w.height_cm} cm · ${esc(LAYER_NAMES[w.layer]||"")}
-        ${w.fixing?" · "+w.fixing:""}${p.list.length?" · +"+p.list.length+" add-on(s)":""}
+      <div class="det">${w.width_cm}×${w.height_cm} cm · ${esc(layerName(w.layer))}
+        ${w.fixing?" · "+esc(tv(w.fixing)):""}${p.list.length?" · "+tr("s2.addons",{n:p.list.length}):""}
         ${coverageNote(w)?"<br>"+coverageNote(w):""}
         ${(w.photos||[]).length?" · 📷 "+w.photos.length:""}
         ${fabtxt?"<br>"+fabtxt:""}</div>
       <div class="price">${fmt(p.total)}</div>
       <div class="acts">
-        <button data-i="${i}" class="ed">✏️ Edit</button>
-        <button data-i="${i}" class="cp">📋 Copy</button>
-        <button data-i="${i}" class="del">🗑 Delete</button>
+        <button data-i="${i}" class="ed">${tr("s2.edit")}</button>
+        <button data-i="${i}" class="cp">${tr("s2.copy")}</button>
+        <button data-i="${i}" class="del">${tr("s2.del")}</button>
       </div>
     </div>`;
   });
-  html += `<button class="btn primary" id="addwin" style="margin-top:14px">＋ Add Window</button>
+  html += `<button class="btn primary" id="addwin" style="margin-top:14px">${tr("s2.add")}</button>
   <div style="height:8px"></div>
-  <button class="btn ghost" id="s2back">← Back to Customer</button>`;
+  <button class="btn ghost" id="s2back">${tr("s2.back")}</button>`;
   m.innerHTML = html;
 
   m.querySelectorAll(".ed").forEach(b=>b.onclick = ()=> openWinEditor(+b.dataset.i));
@@ -637,12 +1015,12 @@ function renderStep2(){
     const cp = JSON.parse(JSON.stringify(src)); cp.window_name = "W"+(state.windows.length+1);
     state.windows.push(cp); render(); });
   m.querySelectorAll(".del").forEach(b=>b.onclick = ()=>{
-    if(confirm("Delete this window?")){ state.windows.splice(+b.dataset.i,1); render(); } });
+    if(confirm(tr("s2.del.confirm"))){ state.windows.splice(+b.dataset.i,1); render(); } });
   $("#addwin").onclick = ()=> openWinEditor(-1);
   $("#s2back").onclick = ()=>{ state.step=1; render(); };
 
-  totbar(true, state.windows.length ? "Review Order →" : "Add a window first", ()=>{
-    if(!state.windows.length){ toast("Add at least one window"); return; }
+  totbar(true, state.windows.length ? tr("s2.review") : tr("s2.addfirst"), ()=>{
+    if(!state.windows.length){ toast(tr("t.need.window")); return; }
     state.step=3; render(); window.scrollTo(0,0);
   });
 }
@@ -717,17 +1095,15 @@ function drawWinEditor(){
   }
   applyGeometry(w);
 
-  const covLabel = w.coverage==="window_width" ? "Window width (cm)"
-    : w.coverage==="inside_frame" ? "Recess width (cm)" : "Wall-to-wall width (cm)";
-  const covHint = w.coverage==="window_width" ? "Just the window opening itself — the side extras go below."
-    : w.coverage==="inside_frame" ? "Measure inside the recess at its narrowest point."
-    : "The full wall span to be covered. Minimum 1 m is charged.";
+  const covKey = w.coverage==="window_width" ? "win" : w.coverage==="inside_frame" ? "in" : "w2w";
+  const covLabel = tr("cov.lbl."+covKey);
+  const covHint = tr("cov.hint."+covKey);
   let unevenNote = "";
   if(w.uneven){
     const hs = [w.height_left_cm, w.height_middle_cm, w.height_right_cm].map(x=>+x).filter(x=>x>0);
     unevenNote = hs.length>1
-      ? `<div class="totbox">📐 Height used: ${Math.min(...hs)} cm<small>Smallest of the three — difference ${r2(Math.max(...hs)-Math.min(...hs))} cm is recorded for the installer</small></div>`
-      : `<div class="hint">Enter all three heights. The smallest will be used so the curtain never drags.</div>`;
+      ? `<div class="totbox">${tr("we.hused",{n:Math.min(...hs)})}<small>${tr("we.hused.sub",{d:r2(Math.max(...hs)-Math.min(...hs))})}</small></div>`
+      : `<div class="hint">${tr("we.uneven.hint")}</div>`;
   }
 
   const price = windowPrice(w);
@@ -735,13 +1111,13 @@ function drawWinEditor(){
 
   const layerOpts = w.style && !isBlind ? layersForStyle(w.style) : [];
   const layerBtns = layerOpts.map(l=>
-    `<button class="${w.layer===l?"on":""}" data-l="${l}">${LAYER_NAMES[l]||l}</button>`).join("");
+    `<button class="${w.layer===l?"on":""}" data-l="${l}">${layerName(l)||l}</button>`).join("");
 
   const styleCards = styles.map(s=>{
     const sm = STYLE_META[s]||{nm:s, ic:"🪟"};
     const anyP = CATALOG.find(x=>x.style===s && x.category!=="addon");
-    const prTxt = anyP ? (anyP.unit==="per_sqm" ? "from AED "+(+CATALOG.filter(x=>x.style===s).sort((a,b)=>a.price-b.price)[0].price)+"/m²"
-                       : "from AED "+(+CATALOG.filter(x=>x.style===s&&x.category==="curtain").sort((a,b)=>a.price-b.price)[0].price)+"/m width") : "";
+    const prTxt = anyP ? (anyP.unit==="per_sqm" ? tr("we.from.sqm",{p:+CATALOG.filter(x=>x.style===s).sort((a,b)=>a.price-b.price)[0].price})
+                       : tr("we.from.m",{p:+CATALOG.filter(x=>x.style===s&&x.category==="curtain").sort((a,b)=>a.price-b.price)[0].price})) : "";
     const img = STYLE_IMG[s];
     return `<div class="stylecard ${w.style===s?"on":""}" data-s="${s}">
       ${img ? `<div class="im" style="background-image:url('${img}')"></div>`
@@ -754,17 +1130,19 @@ function drawWinEditor(){
     const code = lay==="sheer" ? w.fabric_sheer : w.fabric_blackout;
     const roll = rollWidthOf(code);
     return `<button class="fabbtn ${code?"set":""}" data-fp="${lay}">
-      ${code ? "✓ "+esc(code)+" — roll width "+(roll||"?")+" cm"
-             : "🔍 Choose "+lay+" fabric (or decide later)"}</button>`;
+      ${code ? tr("we.fab.set",{code:esc(code), w:(roll||"?")})
+             : tr("we.fab.pick",{layer:tr(lay==="sheer"?"sheer":"blackout")})}</button>`;
   };
 
   let fabSection = "";
   if(p && p.uses_fabric){
     const need = (w.style==="roman") ? [w.layer] : (w.layer==="sheer_blackout" ? ["sheer","blackout"] : [w.layer]);
-    fabSection = `<div class="card"><label class="f">Fabric</label>` +
+    fabSection = `<div class="card"><label class="f">${tr("we.fabric")}</label>` +
       need.filter(Boolean).map(l=>`<div style="margin:8px 0">${fabBtn(l)}</div>`).join("") +
-      (fabs.length && w.width_cm && w.height_cm ? `<div class="estbox">🧵 <b>Fabric needed (incl. 1 m safety):</b><br>` +
-        fabs.map(f=>`${f.layer==="sheer"?"Sheer":"Blackout"}: <b>${f.meters} m</b> ${f.code?("("+esc(f.code)+", roll "+(f.roll||DEFAULT_ROLL_CM)+" cm"+(f.roll?"":" assumed")+")"):"(no fabric yet — "+DEFAULT_ROLL_CM+" cm assumed)"}`).join("<br>") + `</div>` : "") +
+      (fabs.length && w.width_cm && w.height_cm ? `<div class="estbox">${tr("we.fab.need")}<br>` +
+        fabs.map(f=>`${tr(f.layer==="sheer"?"sheer":"blackout")}: <b>${f.meters} m</b> ${f.code
+          ? "("+esc(f.code)+", "+tr("we.fab.roll2",{n:(f.roll||DEFAULT_ROLL_CM)})+(f.roll?"":tr("we.fab.assumed"))+")"
+          : tr("we.fab.none",{n:DEFAULT_ROLL_CM})}`).join("<br>") + `</div>` : "") +
       `</div>`;
   }
 
@@ -773,16 +1151,16 @@ function drawWinEditor(){
     if(!cond) return ""; const pr = addonRow(code); if(!pr) return "";
     const bw = Math.max(+w.width_cm||0,100)/100;
     const amt = pr.unit==="per_m_width" ? (+pr.price*bw) : +pr.price;
-    const prtxt = pr.unit==="per_m_width" ? "AED "+(+pr.price)+"/m width" + (w.width_cm?` = ${fmt0(amt)}`:"")
+    const prtxt = pr.unit==="per_m_width" ? tr("addon.perm",{p:+pr.price}) + (w.width_cm?` = ${fmt0(amt)}`:"")
       : pr.unit==="fixed" ? fmt0(pr.price) : "AED "+(+pr.price);
     return `<div class="addon"><div class="l"><div class="nm">${esc(pr.name)}</div>
-      <div class="pr">${prtxt}${+pr.price===0?" — FREE":""}</div></div>
+      <div class="pr">${prtxt}${+pr.price===0?tr("addon.free"):""}</div></div>
       <button class="switch ${A[key]?"on":""}" data-tg="${key}"></button></div>`;
   };
-  const addonStep = (key,code,unitTxt)=>{
+  const addonStep = (key,code,unitKey)=>{
     const pr = addonRow(code); if(!pr) return "";
     // free items show no price line at all
-    const prLine = +pr.price>0 ? `<div class="pr">AED ${+pr.price} ${unitTxt}</div>` : "";
+    const prLine = +pr.price>0 ? `<div class="pr">AED ${+pr.price} ${tr(unitKey)}</div>` : "";
     return `<div class="addon"><div class="l"><div class="nm">${esc(pr.name)}</div>
       ${prLine}</div>
       <div class="stepper"><button data-sm="${key}">−</button>
@@ -791,9 +1169,10 @@ function drawWinEditor(){
 
   const motorCode = w.layer==="sheer_blackout" ? "ADD-MOT2" : "ADD-MOT1";
 
-  // generic single-select chip row bound to a field on w; tap the chosen chip again to clear it
+  // Generic single-select chip row. data-set carries the CANONICAL ENGLISH value that
+  // gets stored; only the visible label is translated. Tap the chosen chip again to clear.
   const chipRow = (field, list) => `<div class="chips">` + list.map(v=>
-    `<div class="chip ${w[field]===v?"on":""}" data-set="${field}|${esc(v)}">${esc(v)}</div>`).join("") + `</div>`;
+    `<div class="chip ${w[field]===v?"on":""}" data-set="${field}|${esc(v)}">${esc(tv(v))}</div>`).join("") + `</div>`;
   const nSet = keys => keys.filter(k=>{
     const v = w[k]; return v!==""&&v!=null&&v!==false&&v!==0; }).length;
   const siteCount = nSet(["ceiling_material","skirting_height_cm","pocket_depth_cm","window_shape"]);
@@ -804,230 +1183,230 @@ function drawWinEditor(){
   <div class="overlay" id="winov">
     <div class="obar">
       <button class="x" id="ov_x">✕</button>
-      <h2>${editIdx>=0?"Edit":"Add"} Window</h2>
+      <h2>${editIdx>=0?tr("we.edit"):tr("we.add")}</h2>
     </div>
 
     <div class="card">
-      <label class="f">Window name</label>
+      <label class="f">${tr("we.name")}</label>
       <input type="text" id="w_name" value="${esc(w.window_name)}" placeholder="W1">
-      <label class="f">Room</label>
-      <div class="chips" id="w_rooms">${ROOMS.map(r=>`<div class="chip ${w.room===r?"on":""}" data-r="${esc(r)}">${esc(r)}</div>`).join("")}</div>
+      <label class="f">${tr("we.room")}</label>
+      <div class="chips" id="w_rooms">${ROOMS.map(r=>`<div class="chip ${w.room===r?"on":""}" data-r="${esc(r)}">${esc(tv(r))}</div>`).join("")}</div>
     </div>
 
     <div class="card">
-      <label class="f">Product <span class="req">*</span></label>
+      <label class="f">${tr("we.product")} <span class="req">*</span></label>
       <div class="stylegrid" id="w_styles">${styleCards}</div>
-      ${layerOpts.length ? `<label class="f">Layers</label><div class="seg" id="w_layers">${layerBtns}</div>` : ""}
+      ${layerOpts.length ? `<label class="f">${tr("we.layers")}</label><div class="seg" id="w_layers">${layerBtns}</div>` : ""}
     </div>
 
     <div class="card">
-      <label class="f">How far should it cover? <span class="req">*</span></label>
+      <label class="f">${tr("we.cover")} <span class="req">*</span></label>
       <div class="seg" id="w_cov">
-        <button data-c="wall_to_wall" class="${w.coverage==="wall_to_wall"?"on":""}">Wall to wall</button>
-        <button data-c="window_width" class="${w.coverage==="window_width"?"on":""}">Window width</button>
-        ${canInside?`<button data-c="inside_frame" class="${w.coverage==="inside_frame"?"on":""}">Inside frame</button>`:""}
+        <button data-c="wall_to_wall" class="${w.coverage==="wall_to_wall"?"on":""}">${tr("cov.w2w")}</button>
+        <button data-c="window_width" class="${w.coverage==="window_width"?"on":""}">${tr("cov.win")}</button>
+        ${canInside?`<button data-c="inside_frame" class="${w.coverage==="inside_frame"?"on":""}">${tr("cov.in")}</button>`:""}
       </div>
 
       <label class="f">${covLabel} <span class="req">*</span></label>
-      <input type="number" id="w_bw" inputmode="decimal" placeholder="e.g. 240" value="${w.base_width_cm||""}">
+      <input type="number" id="w_bw" inputmode="decimal" placeholder="${tr("we.width.ph")}" value="${w.base_width_cm||""}">
       <div class="hint">${covHint}</div>
 
       ${w.coverage==="window_width"?`
       <div class="two">
-        <div><label class="f">Left extra (cm)</label>
+        <div><label class="f">${tr("we.lx")}</label>
           <input type="number" id="w_lx" inputmode="decimal" placeholder="0" value="${+w.left_extra_cm||""}"></div>
-        <div><label class="f">Right extra (cm)</label>
+        <div><label class="f">${tr("we.rx")}</label>
           <input type="number" id="w_rx" inputmode="decimal" placeholder="0" value="${+w.right_extra_cm||""}"></div>
       </div>
-      <div class="hint">How much the curtain goes past the window on each side. Leave 0 if none.</div>
-      ${w.base_width_cm!==""?`<div class="totbox">📏 Total width to cover: ${w.width_cm} cm
-        <small>${+w.base_width_cm} window + ${+w.left_extra_cm||0} left + ${+w.right_extra_cm||0} right</small></div>`:""}`:""}
+      <div class="hint">${tr("we.extra.hint")}</div>
+      ${w.base_width_cm!==""?`<div class="totbox">${tr("we.totalw",{n:w.width_cm})}
+        <small>${tr("we.totalw.sub",{b:+w.base_width_cm, l:+w.left_extra_cm||0, r:+w.right_extra_cm||0})}</small></div>`:""}`:""}
 
-      <label class="f">Fixing</label>
+      <label class="f">${tr("we.fixing")}</label>
       <div class="seg" id="w_fix">
-        <button data-f="Wall" class="${w.fixing==="Wall"?"on":""}">Wall</button>
-        <button data-f="Ceiling" class="${w.fixing==="Ceiling"?"on":""}">Ceiling</button>
+        <button data-f="Wall" class="${w.fixing==="Wall"?"on":""}">${tv("Wall")}</button>
+        <button data-f="Ceiling" class="${w.fixing==="Ceiling"?"on":""}">${tv("Ceiling")}</button>
       </div>
 
       <div class="addon" style="margin-top:10px">
-        <div class="l"><div class="nm">Floor or ceiling is uneven</div>
-          <div class="pr">Record left / middle / right heights</div></div>
+        <div class="l"><div class="nm">${tr("we.uneven")}</div>
+          <div class="pr">${tr("we.uneven.sub")}</div></div>
         <button class="switch ${w.uneven?"on":""}" data-uv="1"></button>
       </div>
 
       ${w.uneven?`
       <div class="two">
-        <div><label class="f">Left (cm)</label><input type="number" id="w_hl" inputmode="decimal" value="${w.height_left_cm||""}"></div>
-        <div><label class="f">Middle (cm)</label><input type="number" id="w_hm" inputmode="decimal" value="${w.height_middle_cm||""}"></div>
-        <div><label class="f">Right (cm)</label><input type="number" id="w_hr" inputmode="decimal" value="${w.height_right_cm||""}"></div>
+        <div><label class="f">${tr("we.left")}</label><input type="number" id="w_hl" inputmode="decimal" value="${w.height_left_cm||""}"></div>
+        <div><label class="f">${tr("we.mid")}</label><input type="number" id="w_hm" inputmode="decimal" value="${w.height_middle_cm||""}"></div>
+        <div><label class="f">${tr("we.right")}</label><input type="number" id="w_hr" inputmode="decimal" value="${w.height_right_cm||""}"></div>
       </div>
       ${unevenNote}`:`
-      <label class="f">Height (cm) <span class="req">*</span></label>
-      <input type="number" id="w_bh" inputmode="decimal" placeholder="e.g. 290" value="${w.base_height_cm||""}">`}
+      <label class="f">${tr("we.height")} <span class="req">*</span></label>
+      <input type="number" id="w_bh" inputmode="decimal" placeholder="${tr("we.height.ph")}" value="${w.base_height_cm||""}">`}
 
       ${w.fixing==="Wall"?`
-      <label class="f">Extra above the window (cm)</label>
+      <label class="f">${tr("we.tx")}</label>
       <input type="number" id="w_tx" inputmode="decimal" placeholder="0" value="${+w.top_extra_cm||""}">
-      <div class="hint">How high above the window the track sits. Leave 0 if the height above already includes it.</div>
-      ${w.base_height_cm!==""&&+w.top_extra_cm>0?`<div class="totbox">📐 Total height: ${w.height_cm} cm
-        <small>${+w.base_height_cm} + ${+w.top_extra_cm} above window</small></div>`:""}`:""}
+      <div class="hint">${tr("we.tx.hint")}</div>
+      ${w.base_height_cm!==""&&+w.top_extra_cm>0?`<div class="totbox">${tr("we.totalh",{n:w.height_cm})}
+        <small>${tr("we.totalh.sub",{b:+w.base_height_cm, t:+w.top_extra_cm})}</small></div>`:""}`:""}
 
-      ${(p && p.tall_window_rule) ? `<div class="hint">Above 300 cm height, the rate increases proportionally (× height ÷ 3).</div>`:""}
+      ${(p && p.tall_window_rule) ? `<div class="hint">${tr("we.tall.hint")}</div>`:""}
       ${!isBlind && w.style ? `
-      <label class="f">Pooling on floor</label>
+      <label class="f">${tr("we.pool")}</label>
       <div class="seg" id="w_pool">
-        <button data-p="-1" class="${+w.pooling_cm<0?"on":""}">Above floor</button>
-        <button data-p="0" class="${+w.pooling_cm===0?"on":""}">Touching</button>
-        <button data-p="1" class="${+w.pooling_cm>0?"on":""}">Puddle</button>
+        <button data-p="-1" class="${+w.pooling_cm<0?"on":""}">${tr("pool.above")}</button>
+        <button data-p="0" class="${+w.pooling_cm===0?"on":""}">${tr("pool.touch")}</button>
+        <button data-p="1" class="${+w.pooling_cm>0?"on":""}">${tr("pool.puddle")}</button>
       </div>
       <div id="w_poolcm_wrap" class="${+w.pooling_cm===0?"hidden":""}" style="margin-top:8px">
         <input type="number" id="w_poolcm" inputmode="decimal" placeholder="cm" value="${Math.abs(+w.pooling_cm)||""}">
-        <div class="hint">${+w.pooling_cm<0?"How many cm above the floor":"How many cm pooling on the floor"}</div>
+        <div class="hint">${+w.pooling_cm<0?tr("we.pool.a.hint"):tr("we.pool.p.hint")}</div>
       </div>`:""}
 
-      <label class="f">Who measured?</label>
+      <label class="f">${tr("we.meas")}</label>
       <div class="seg" id="w_meas">
-        <button data-m="our_team" class="${w.measured_by==="our_team"?"on":""}">Our team</button>
-        <button data-m="customer" class="${w.measured_by==="customer"?"on":""}">Customer gave sizes</button>
+        <button data-m="our_team" class="${w.measured_by==="our_team"?"on":""}">${tr("meas.team")}</button>
+        <button data-m="customer" class="${w.measured_by==="customer"?"on":""}">${tr("meas.cust")}</button>
       </div>
     </div>
 
     <div class="card">
       ${isCurtain||w.style==="roman"?`
-      <label class="f">Opening</label>
+      <label class="f">${tr("we.open")}</label>
       <div class="seg" id="w_open">
-        <button data-o="Middle (2-way)" class="${w.opening==="Middle (2-way)"?"on":""}">Middle</button>
-        <button data-o="One side (1-way)" class="${w.opening==="One side (1-way)"?"on":""}">One side</button>
+        <button data-o="Middle (2-way)" class="${w.opening==="Middle (2-way)"?"on":""}">${tr("open.mid")}</button>
+        <button data-o="One side (1-way)" class="${w.opening==="One side (1-way)"?"on":""}">${tr("open.one")}</button>
       </div>
       ${w.opening==="Middle (2-way)"?`
-      <label class="f">Centre overlap (cm)</label>
+      <label class="f">${tr("we.overlap")}</label>
       <input type="number" id="w_ov" inputmode="decimal" placeholder="0" value="${+w.centre_overlap_cm||""}">
-      <div class="hint">How much the two panels overlap in the middle.</div>`:""}`:""}
+      <div class="hint">${tr("we.overlap.hint")}</div>`:""}`:""}
       ${isCurtain?`
-      <label class="f">Track colour</label>
-      <div class="chips" id="w_track">${TRACK_COLOURS.map(c=>`<div class="chip ${w.track_color===c?"on":""}" data-t="${c}">${c}${c==="Black"?" +AED 40/m":""}</div>`).join("")}</div>
-      ${w.track_color==="Black"&&w.width_cm?`<div class="hint">Black track: AED 40 × ${Math.max(+w.width_cm,100)/100} m = <b>${fmt0(40*Math.max(+w.width_cm,100)/100)}</b></div>`:`<div class="hint">White track is free. Black track adds AED 40 per metre of width.</div>`}
+      <label class="f">${tr("we.track")}</label>
+      <div class="chips" id="w_track">${TRACK_COLOURS.map(c=>`<div class="chip ${w.track_color===c?"on":""}" data-t="${c}">${esc(tv(c))}${c==="Black"?" +AED 40/m":""}</div>`).join("")}</div>
+      ${w.track_color==="Black"&&w.width_cm?`<div class="hint">${tr("we.track.calc",{m:Math.max(+w.width_cm,100)/100, amt:fmt0(40*Math.max(+w.width_cm,100)/100)})}</div>`:`<div class="hint">${tr("we.track.free")}</div>`}
 
-      <label class="f">Tie belt</label>
+      <label class="f">${tr("we.tie")}</label>
       <div class="seg" id="w_tie">
-        <button data-tb="" class="${!w.tie_belt?"on":""}">No tie belt</button>
-        <button data-tb="velcro" class="${w.tie_belt==="velcro"?"on":""}">Velcro</button>
-        <button data-tb="hooks" class="${w.tie_belt==="hooks"?"on":""}">With hooks</button>
+        <button data-tb="" class="${!w.tie_belt?"on":""}">${tr("tie.none")}</button>
+        <button data-tb="velcro" class="${w.tie_belt==="velcro"?"on":""}">${tr("tie.velcro")}</button>
+        <button data-tb="hooks" class="${w.tie_belt==="hooks"?"on":""}">${tr("tie.hooks")}</button>
       </div>
-      <div class="hint">Free of charge, in the same fabric as the curtain.</div>
+      <div class="hint">${tr("we.tie.hint")}</div>
       ${w.tie_belt?`
-      <label class="f">Which side?</label>
+      <label class="f">${tr("we.side")}</label>
       ${chipRow("tieback_side", SIDES)}
-      ${w.tie_belt==="hooks"?`<label class="f">Hook finish</label>${chipRow("tieback_finish", TIEBACK_FINISHES)}`:""}`:""}`:""}
+      ${w.tie_belt==="hooks"?`<label class="f">${tr("we.hookfin")}</label>${chipRow("tieback_finish", TIEBACK_FINISHES)}`:""}`:""}`:""}
     </div>
 
     <div class="card">
-      <label class="f">Photos of this window</label>
+      <label class="f">${tr("we.photos")}</label>
       <div class="photos" id="w_photos">${(w.photos||[]).map((u,pi)=>
         `<div class="ph"><img src="${esc(u)}" alt=""><button data-rmph="${pi}">✕</button></div>`).join("")}</div>
       <input type="file" id="w_file" accept="image/*" capture="environment" multiple style="display:none">
-      <button class="cambtn" id="w_cam" style="margin-top:8px">📷 Take / add photo</button>
-      <div class="hint">A photo saves a lot of explaining later — beams, sockets, skirting, existing tracks.</div>
+      <button class="cambtn" id="w_cam" style="margin-top:8px">${tr("we.cam")}</button>
+      <div class="hint">${tr("we.photos.hint")}</div>
     </div>
 
     ${fabSection}
 
     <div class="acc ${accOpen.addons?"":"shut"}" id="acc_addons">
-      <div class="hd" data-acc="addons"><span>➕ Add-ons for this window</span>
-        <span class="ar">${price.list.length?price.list.length+" added":"none"} ${accOpen.addons?"▲":"▼"}</span></div>
+      <div class="hd" data-acc="addons"><span>${tr("acc.addons")}</span>
+        <span class="ar">${price.list.length?tr("acc.added",{n:price.list.length}):tr("none")} ${accOpen.addons?"▲":"▼"}</span></div>
       <div class="bd">
         ${addonToggle("pelmet","ADD-PELC", meta.cat==="curtain")}
         ${addonToggle("boxblind","ADD-BOXB", isBlind)}
         ${w.style?`<div class="addon"><div class="l"><div class="nm">${esc((addonRow(motorCode)||{}).name||"Motor + Remote")}</div>
-          <div class="pr">${fmt0((addonRow(motorCode)||{}).price||0)} — 7 yr warranty</div></div>
+          <div class="pr">${tr("addon.warranty",{p:fmt0((addonRow(motorCode)||{}).price||0)})}</div></div>
           <button class="switch ${A.motor?"on":""}" data-tg="motor"></button></div>`:""}
-        ${addonStep("stick","ADD-STK","per stick")}
-        ${addonStep("returns","ADD-RET","per side")}
-        ${addonStep("bend","ADD-BND","per meter")}
+        ${addonStep("stick","ADD-STK","unit.stick")}
+        ${addonStep("returns","ADD-RET","unit.side")}
+        ${addonStep("bend","ADD-BND","unit.meter")}
         ${addonToggle("velcro","ADD-VEL")}
         ${A.velcro?`
         <div class="sub">
-          <label class="f" style="margin-top:2px">Which side?</label>
+          <label class="f" style="margin-top:2px">${tr("we.side")}</label>
           ${chipRow("velcro_side", SIDES)}
           <div class="addon" style="border:none;padding:8px 0 2px">
-            <div class="l"><div class="nm">Extra pieces in the middle</div></div>
+            <div class="l"><div class="nm">${tr("we.velcro.mid")}</div></div>
             <div class="stepper"><button data-dec="velcro_middle_pieces">−</button>
             <div class="qv">${+w.velcro_middle_pieces||0}</div><button data-inc="velcro_middle_pieces">＋</button></div>
           </div>
         </div>`:""}
         ${addonToggle("removal","ADD-REM")}
-        ${addonStep("alteration","ADD-ALT","per curtain")}
+        ${addonStep("alteration","ADD-ALT","unit.curtain")}
       </div>
     </div>
 
     <div class="acc ${accOpen.site?"":"shut"}" id="acc_site">
-      <div class="hd" data-acc="site"><span>🏠 Site details (optional)</span>
-        <span class="ar">${siteCount?siteCount+" set":"none"} ${accOpen.site?"▲":"▼"}</span></div>
+      <div class="hd" data-acc="site"><span>${tr("acc.site")}</span>
+        <span class="ar">${siteCount?tr("acc.set",{n:siteCount}):tr("none")} ${accOpen.site?"▲":"▼"}</span></div>
       <div class="bd">
-        <label class="f">Ceiling / wall material</label>
+        <label class="f">${tr("we.ceiling")}</label>
         ${chipRow("ceiling_material", CEILING_MATERIALS)}
-        <div class="hint">Tells the team which drill and brackets to bring.</div>
+        <div class="hint">${tr("we.ceiling.hint")}</div>
         <div class="two">
-          <div><label class="f">Skirting height (cm)</label>
+          <div><label class="f">${tr("we.skirt")}</label>
             <input type="number" id="w_skirt" inputmode="decimal" placeholder="0" value="${w.skirting_height_cm||""}"></div>
-          <div><label class="f">Pocket depth (cm)</label>
+          <div><label class="f">${tr("we.pocket")}</label>
             <input type="number" id="w_pocket" inputmode="decimal" placeholder="0" value="${w.pocket_depth_cm||""}"></div>
         </div>
-        <label class="f">Window shape</label>
+        <label class="f">${tr("we.shape")}</label>
         ${chipRow("window_shape", WINDOW_SHAPES)}
-        ${w.window_shape&&w.window_shape!=="Straight"?`<div class="hint">⚠️ A bend rail is usually needed — add it under Add-ons.</div>`:""}
+        ${w.window_shape&&w.window_shape!=="Straight"?`<div class="hint">${tr("we.shape.hint")}</div>`:""}
       </div>
     </div>
 
     <div class="acc ${accOpen.finish?"":"shut"}" id="acc_finish">
-      <div class="hd" data-acc="finish"><span>🧷 Finishing details (optional)</span>
-        <span class="ar">${finCount?finCount+" set":"none"} ${accOpen.finish?"▲":"▼"}</span></div>
+      <div class="hd" data-acc="finish"><span>${tr("acc.finish")}</span>
+        <span class="ar">${finCount?tr("acc.set",{n:finCount}):tr("none")} ${accOpen.finish?"▲":"▼"}</span></div>
       <div class="bd">
         ${w.addons&&w.addons.motor?`
-        <label class="f">Motor side</label>
+        <label class="f">${tr("we.motorside")}</label>
         ${chipRow("motor_side", ["Left","Right"])}
         <div class="addon" style="margin-top:6px">
-          <div class="l"><div class="nm">Power socket nearby</div><div class="pr">Within cable reach of the track</div></div>
+          <div class="l"><div class="nm">${tr("we.socket")}</div><div class="pr">${tr("we.socket.sub")}</div></div>
           <button class="switch ${w.socket_nearby?"on":""}" data-bool="socket_nearby"></button>
         </div>
         <div class="addon">
-          <div class="l"><div class="nm">Cable trunking needed</div><div class="pr">To hide the motor cable</div></div>
+          <div class="l"><div class="nm">${tr("we.trunk")}</div><div class="pr">${tr("we.trunk.sub")}</div></div>
           <button class="switch ${w.trunking_needed?"on":""}" data-bool="trunking_needed"></button>
         </div>`:""}
 
-        <label class="f">Already installed at this window</label>
+        <label class="f">${tr("we.existing")}</label>
         ${chipRow("existing_covering", EXISTING_TYPES)}
         ${w.existing_covering?`
         <div class="addon" style="margin-top:6px">
-          <div class="l"><div class="nm">How many</div><div class="pr">Curtains / blinds to handle</div></div>
+          <div class="l"><div class="nm">${tr("we.howmany")}</div><div class="pr">${tr("we.howmany.sub")}</div></div>
           <div class="stepper"><button data-dec="existing_count">−</button>
           <div class="qv">${+w.existing_count||0}</div><button data-inc="existing_count">＋</button></div>
         </div>
-        <label class="f">What to do with it</label>
+        <label class="f">${tr("we.whattodo")}</label>
         <div class="seg" id="w_exact">
-          <button data-set="existing_action|remove" class="${w.existing_action==="remove"?"on":""}">Remove</button>
-          <button data-set="existing_action|reuse" class="${w.existing_action==="reuse"?"on":""}">Reuse</button>
-          <button data-set="existing_action|leave" class="${w.existing_action==="leave"?"on":""}">Leave as is</button>
+          <button data-set="existing_action|remove" class="${w.existing_action==="remove"?"on":""}">${tr("act.remove")}</button>
+          <button data-set="existing_action|reuse" class="${w.existing_action==="reuse"?"on":""}">${tr("act.reuse")}</button>
+          <button data-set="existing_action|leave" class="${w.existing_action==="leave"?"on":""}">${tr("act.leave")}</button>
         </div>`:""}
 
         ${!isBlind&&w.style?`
-        <label class="f">Gather / fullness override</label>
+        <label class="f">${tr("we.full")}</label>
         <input type="number" id="w_full" inputmode="decimal" step="0.1"
-          placeholder="Standard ${FULLNESS[w.style] ?? 2.2}× — leave empty" value="${w.fullness_override||""}">
-        <div class="hint">Only if the customer asked for more or less gathering. This changes the fabric estimate.</div>`:""}
+          placeholder="${tr("we.full.ph",{n:FULLNESS[w.style] ?? 2.2})}" value="${w.fullness_override||""}">
+        <div class="hint">${tr("we.full.hint")}</div>`:""}
       </div>
     </div>
 
     <div class="card">
-      <label class="f">Notes for this window (optional)</label>
-      <textarea id="w_notes" placeholder="Anything special…">${esc(w.notes||"")}</textarea>
+      <label class="f">${tr("we.notes")}</label>
+      <textarea id="w_notes" placeholder="${tr("we.notes.ph")}">${esc(w.notes||"")}</textarea>
     </div>
     <div style="height:70px"></div>
   </div>
   <div class="obtns" id="ov_btns">
     <div class="row" style="display:flex;justify-content:space-between;font-weight:800;font-size:17px;margin-bottom:8px">
-      <span>This window</span><span>${fmt(price.total)}</span></div>
-    <button class="btn primary" id="ov_save">Save Window</button>
+      <span>${tr("we.this")}</span><span>${fmt(price.total)}</span></div>
+    <button class="btn primary" id="ov_save">${tr("we.save")}</button>
   </div>`;
 
   // The overlay is the scroll container and we replace it wholesale on every tap,
@@ -1123,10 +1502,10 @@ function drawWinEditor(){
   $("#w_cam").onclick = ()=>{ grab(); fileEl.click(); };
   fileEl.onchange = async ()=>{
     const files = Array.from(fileEl.files||[]); if(!files.length) return;
-    grab(); loading(true, "Uploading photo…");
+    grab(); loading(true, tr("load.photo"));
     for(const f of files){
       try{ const url = await uploadPhoto(f); w.photos.push(url); }
-      catch(e){ toast("Photo failed: "+e.message); }
+      catch(e){ toast(tr("t.photo.fail",{m:e.message})); }
     }
     loading(false); drawWinEditor();
   };
@@ -1139,9 +1518,9 @@ function drawWinEditor(){
 
   $("#ov_save").onclick = ()=>{
     grab();
-    if(!w.style){ toast("Please choose the product / style"); return; }
-    if(STYLE_META[w.style]?.cat!=="blind" && !w.layer){ toast("Please choose the layers"); return; }
-    if(!(+w.width_cm>0) || !(+w.height_cm>0)){ toast("Please enter width and height in cm"); return; }
+    if(!w.style){ toast(tr("t.need.style")); return; }
+    if(STYLE_META[w.style]?.cat!=="blind" && !w.layer){ toast(tr("t.need.layer")); return; }
+    if(!(+w.width_cm>0) || !(+w.height_cm>0)){ toast(tr("t.need.wh")); return; }
     if(editIdx>=0) state.windows[editIdx]=w; else state.windows.push(w);
     closeOverlay(); render(); window.scrollTo(0,0);
   };
@@ -1155,10 +1534,10 @@ function openFabricPicker(layer){
   <div class="overlay" id="fabov" style="z-index:150">
     <div class="obar">
       <button class="x" id="fab_x">←</button>
-      <h2>Choose ${layer} fabric</h2>
+      <h2>${tr("fp.title",{layer:tr(layer==="sheer"?"sheer":"blackout")})}</h2>
     </div>
-    <input type="text" id="fab_q" placeholder="🔍 Type fabric code…" autocomplete="off" style="font-size:18px">
-    <button class="btn ghost" style="margin-top:10px" id="fab_skip">Decide later (assume ${DEFAULT_ROLL_CM} cm roll)</button>
+    <input type="text" id="fab_q" placeholder="${tr("fp.ph")}" autocomplete="off" style="font-size:18px">
+    <button class="btn ghost" style="margin-top:10px" id="fab_skip">${tr("fp.skip",{n:DEFAULT_ROLL_CM})}</button>
     <div class="fablist card" id="fab_list" style="padding:4px 12px"></div>
   </div>`;
   const root = document.createElement("div"); root.id="fab_root"; root.innerHTML = html;
@@ -1170,8 +1549,8 @@ function openFabricPicker(layer){
     const hits = (q ? FABRICS.filter(f=>f.c.toLowerCase().includes(q)) : FABRICS).slice(0,60);
     listEl.innerHTML = hits.length ? hits.map(f=>
       `<div class="fabitem" data-c="${esc(f.c)}"><span>${esc(f.c)}</span>
-       <span class="rw">${f.w?f.w+" cm":"width ?"}</span></div>`).join("")
-      : `<div style="padding:20px;color:var(--muted)">No fabric found. Check the code spelling.</div>`;
+       <span class="rw">${f.w?f.w+" cm":tr("fp.width")}</span></div>`).join("")
+      : `<div style="padding:20px;color:var(--muted)">${tr("fp.none")}</div>`;
     listEl.querySelectorAll(".fabitem").forEach(it=>it.onclick=()=>{
       if(layer==="sheer") editWin.fabric_sheer = it.dataset.c; else editWin.fabric_blackout = it.dataset.c;
       root.remove(); drawWinEditor(); });
@@ -1193,55 +1572,55 @@ function renderStep3(){
   let winHtml = state.windows.map((w,i)=>{
     const p = windowPrice(w);
     const meta = STYLE_META[w.style]||{nm:w.style};
-    return `<div class="revline"><span>${esc(w.window_name||("W"+(i+1)))} — ${esc(meta.nm)} ${esc(LAYER_NAMES[w.layer]||"")} (${w.width_cm}×${w.height_cm})</span>
+    return `<div class="revline"><span>${esc(w.window_name||("W"+(i+1)))} — ${esc(meta.nm)} ${esc(layerName(w.layer))} (${w.width_cm}×${w.height_cm})</span>
       <span><b>${fmt(p.total)}</b></span></div>` +
       (coverageNote(w)?`<div class="revline mut"><span>&nbsp;&nbsp;${coverageNote(w)}</span><span></span></div>`:"") +
       p.list.map(a=>`<div class="revline mut"><span>&nbsp;&nbsp;• ${esc(a.name)}${a.qty>1?" ×"+a.qty:""}</span><span>${fmt(a.amount)}</span></div>`).join("");
   }).join("");
 
   let nudge = "";
-  if(t.pct===0 && t.sub>0 && t.sub<=1500) nudge = `<div class="nudge">💡 Add ${fmt(1500.01-t.sub)} more to unlock a <b>5% discount</b>.</div>`;
-  if(t.pct===5 && t.sub<=3000) nudge = `<div class="nudge">💡 Add ${fmt(3000.01-t.sub)} more to unlock a <b>10% discount</b>.</div>`;
+  if(t.pct===0 && t.sub>0 && t.sub<=1500) nudge = `<div class="nudge">${tr("s3.nudge",{amt:fmt(1500.01-t.sub), p:5})}</div>`;
+  if(t.pct===5 && t.sub<=3000) nudge = `<div class="nudge">${tr("s3.nudge",{amt:fmt(3000.01-t.sub), p:10})}</div>`;
 
   m.innerHTML = `
   <div class="card">
     <h3 style="margin-bottom:8px">👤 ${esc(state.customer_name)}</h3>
-    <div class="revline mut"><span>Phone</span><span>${esc(state.customer_phone||"—")}</span></div>
-    <div class="revline mut"><span>Salesperson</span><span>${esc(state.salesperson)}</span></div>
-    <div class="revline mut"><span>Order date</span><span>${new Date().toLocaleDateString("en-AE",{day:"2-digit",month:"short",year:"numeric"})} (auto)</span></div>
-    <div class="revline mut"><span>Installation</span><span>${esc(state.installation_date||"—")}</span></div>
-    <div class="revline mut"><span>Location</span><span>${state.gps?"✓ GPS saved":"—"}</span></div>
+    <div class="revline mut"><span>${tr("s3.phone")}</span><span>${esc(state.customer_phone||"—")}</span></div>
+    <div class="revline mut"><span>${tr("s3.sales")}</span><span>${esc(state.salesperson)}</span></div>
+    <div class="revline mut"><span>${tr("s3.date")}</span><span>${new Date().toLocaleDateString("en-AE",{day:"2-digit",month:"short",year:"numeric"})} ${tr("s3.auto")}</span></div>
+    <div class="revline mut"><span>${tr("s3.inst")}</span><span>${esc(state.installation_date||"—")}</span></div>
+    <div class="revline mut"><span>${tr("s3.loc")}</span><span>${state.gps?tr("s3.gps"):"—"}</span></div>
   </div>
 
   <div class="card">
-    <h3 style="margin-bottom:8px">🪟 Windows (${state.windows.length})</h3>
+    <h3 style="margin-bottom:8px">${tr("s3.windows",{n:state.windows.length})}</h3>
     ${winHtml}
-    <div class="revline" style="border-top:1px solid var(--line);margin-top:6px;padding-top:10px"><span>Subtotal</span><span>${fmt(t.sub)}</span></div>
-    ${t.pct?`<div class="revline disc"><span>Discount ${t.pct}% (auto)</span><span>− ${fmt(t.disc)}</span></div>`:""}
-    <div class="revline tot"><span>Total</span><span>${fmt(t.total)}</span></div>
+    <div class="revline" style="border-top:1px solid var(--line);margin-top:6px;padding-top:10px"><span>${tr("tb.subtotal")}</span><span>${fmt(t.sub)}</span></div>
+    ${t.pct?`<div class="revline disc"><span>${tr("s3.disc",{p:t.pct})}</span><span>− ${fmt(t.disc)}</span></div>`:""}
+    <div class="revline tot"><span>${tr("tb.total")}</span><span>${fmt(t.total)}</span></div>
     ${nudge}
   </div>
 
   <div class="card">
-    <h3 style="margin-bottom:8px">🧵 Fabric required (incl. 1 m safety each)</h3>
-    ${fs.length? fs.map(f=>`<div class="revline"><span>${esc(f.code)}</span><span><b>${f.meters} m</b></span></div>`).join("") : `<div class="revline mut"><span>No fabric products in this order</span><span></span></div>`}
+    <h3 style="margin-bottom:8px">${tr("s3.fabric")}</h3>
+    ${fs.length? fs.map(f=>`<div class="revline"><span>${esc(f.code)}</span><span><b>${f.meters} m</b></span></div>`).join("") : `<div class="revline mut"><span>${tr("s3.nofabric")}</span><span></span></div>`}
   </div>
 
   <div class="card">
-    <label class="f">Advance received (AED, optional)</label>
+    <label class="f">${tr("s3.adv")}</label>
     <input type="number" id="f_adv" inputmode="decimal" placeholder="0" value="${esc(state.advance_amount)}">
-    <label class="f">Payment mode</label>
-    <div class="chips" id="f_pay">${["Cash","Card","Bank Transfer","Cheque"].map(pm=>`<div class="chip ${state.payment_mode===pm?"on":""}" data-p="${pm}">${pm}</div>`).join("")}</div>
-    <label class="f">Order notes (optional)</label>
-    <textarea id="f_notes" placeholder="Anything the production team should know…">${esc(state.notes)}</textarea>
+    <label class="f">${tr("s3.pay")}</label>
+    <div class="chips" id="f_pay">${["Cash","Card","Bank Transfer","Cheque"].map(pm=>`<div class="chip ${state.payment_mode===pm?"on":""}" data-p="${pm}">${tr("pay."+pm)}</div>`).join("")}</div>
+    <label class="f">${tr("s3.notes")}</label>
+    <textarea id="f_notes" placeholder="${tr("s3.notes.ph")}">${esc(state.notes)}</textarea>
   </div>
-  <button class="btn ghost" id="s3back">← Back to Windows</button>`;
+  <button class="btn ghost" id="s3back">${tr("s3.back")}</button>`;
 
   $("#f_pay").querySelectorAll(".chip").forEach(c=>c.onclick=()=>{
     state.payment_mode = state.payment_mode===c.dataset.p ? "" : c.dataset.p; renderStep3(); });
   $("#s3back").onclick = ()=>{ state.step=2; render(); };
 
-  totbar(true, "✅ Confirm & Submit Order", submitOrder);
+  totbar(true, tr("s3.submit"), submitOrder);
 }
 
 /* ---------- submit ---------- */
@@ -1249,8 +1628,8 @@ async function submitOrder(){
   state.advance_amount = $("#f_adv") ? $("#f_adv").value : state.advance_amount;
   state.notes = $("#f_notes") ? $("#f_notes").value : state.notes;
   const t = orderTotals();
-  if(!confirm("Submit this order for "+esc(state.customer_name)+" — total "+fmt(t.total)+"?")) return;
-  loading(true, "Submitting order…");
+  if(!confirm(tr("s3.confirm",{c:state.customer_name, t:fmt(t.total)}))) return;
+  loading(true, tr("load.submit"));
   const payload = {
     customer_name: state.customer_name,
     customer_phone: state.customer_phone,
@@ -1323,7 +1702,7 @@ async function submitOrder(){
     localStorage.removeItem("pfc_draft_v1");
   }catch(e){
     loading(false);
-    toast("Could not submit: "+e.message+" — your order is saved as draft, try again.", false);
+    toast(tr("t.submit.fail",{m:e.message}), false);
   }
 }
 
@@ -1333,11 +1712,11 @@ function showSuccess(res){
   $("#main").innerHTML = `
   <div class="success">
     <div class="big">🎉</div>
-    <div>Order confirmed</div>
+    <div>${tr("ok.title")}</div>
     <div class="ono">${esc(res.order_no)}</div>
-    <div class="amt">${fmt(res.total)} ${res.discount_pct>0?`<span class="disc">(${res.discount_pct}% discount applied)</span>`:""}</div>
-    <div class="sub">Saved to the PFC database.<br>The team WhatsApp group is being notified automatically.</div>
-    <button class="btn primary" onclick="newOrder()">＋ Start New Order</button>
+    <div class="amt">${fmt(res.total)} ${res.discount_pct>0?`<span class="disc">${tr("ok.disc",{p:res.discount_pct})}</span>`:""}</div>
+    <div class="sub">${tr("ok.sub")}</div>
+    <button class="btn primary" onclick="newOrder()">${tr("ok.new")}</button>
   </div>`;
   window.scrollTo(0,0);
 }
@@ -1351,6 +1730,8 @@ function newOrder(){
   render(); window.scrollTo(0,0);
 }
 
+$("#langsel").onchange = e=>setLang(e.target.value);
+paintChrome();
 bootstrap();
 </script>
 </body>
