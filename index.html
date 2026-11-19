@@ -285,9 +285,14 @@
 /* ================= CONFIG ================= */
 const SB_URL = "https://tdnxoezdbwlpmxgvtgdw.supabase.co";
 const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRkbnhvZXpkYndscG14Z3Z0Z2R3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzNzc1MjIsImV4cCI6MjEwMDk1MzUyMn0.8tIy33fg44Wy6-HUAnmSGQyvcLxwzu5H_o3IXte_WXs";
-const DEFAULT_ROLL_CM = 280;         // used when fabric/roll width unknown
-const SAFETY_M = 1;                  // always add 1 m of fabric
-const FULLNESS = {wave:2.5, american:2.2, eyelet:2.2, ring:2.2, roman:1.0};
+const DEFAULT_ROLL_CM = 280;         // used when no fabric code is chosen yet
+// Fabric ordering method (user, 19 Nov 2026) — identical to SQL fabric_plan(), which recomputes it on submit.
+// Gathering: wave/ripplefold 2.3 · american/pinch pleat/eyelet/ring 2.1 · roman (flat) 1.0
+const FULLNESS = {wave:2.3, american:2.1, eyelet:2.1, ring:2.1, roman:1.0};
+const LEAD_MARGIN_CM = 14;           // straight cut with lead band: height < roll − 14 (top tape)
+const HEM_MARGIN_CM  = 30;           // straight cut, hemmed: height < roll − 30 (16 hem + 14 tape)
+const PANEL_ALLOW_CM = 30;           // inverted cut: each panel = adjusted height + 30
+const FAB_ROUND_M    = 0.5;          // fabric quantity rounded UP to the next 0.5 m
 const STYLE_META = {
   american:{nm:"American Style", ic:"🪡", cat:"curtain"},
   wave:{nm:"Wave Style", ic:"🌊", cat:"curtain"},
@@ -403,7 +408,10 @@ en:{ui:{
 "we.photos.hint":"A photo saves a lot of explaining later — beams, sockets, skirting, existing tracks.",
 "we.fabric":"Fabric","we.fab.pick":"🔍 Choose {layer} fabric (or decide later)",
 "we.fab.set":"✓ {code} — roll width {w} cm",
-"we.fab.need":"🧵 <b>Fabric needed (incl. 1 m safety):</b>",
+"we.fab.need":"🧵 <b>Fabric needed:</b>",
+"fab.str":"straight cut, {f}","fab.lead":"lead band","fab.hem":"hem","fab.inv":"inverted: {n} panels × {l} m",
+"we.finish":"Sheer bottom finish","fin.lead":"Lead band","fin.hem":"Hem",
+"we.finish.hint":"With a lead band the sheer runs in one piece if the roll is at least 14 cm taller than the curtain; a hem needs 30 cm — otherwise it is cut in panels (more fabric).",
 "we.fab.none":"(no fabric yet — {n} cm assumed)","we.fab.roll2":"roll {n} cm","we.fab.assumed":" assumed",
 "acc.addons":"➕ Add-ons for this window","acc.site":"🏠 Site details (optional)","acc.finish":"🧷 Finishing details (optional)",
 "acc.added":"{n} added","acc.set":"{n} set",
@@ -427,7 +435,7 @@ en:{ui:{
 "s3.inst":"Installation","s3.loc":"Location","s3.gps":"✓ GPS saved",
 "s3.windows":"🪟 Windows ({n})","s3.disc":"Discount {p}% (auto)",
 "s3.nudge":"💡 Add {amt} more to unlock a <b>{p}% discount</b>.",
-"s3.fabric":"🧵 Fabric required (incl. 1 m safety each)","s3.nofabric":"No fabric products in this order",
+"s3.fabric":"🧵 Fabric required","s3.nofabric":"No fabric products in this order",
 "s3.adv":"Advance received (AED, optional)","s3.pay":"Payment mode",
 "pay.Cash":"Cash","pay.Card":"Card","pay.Bank Transfer":"Bank Transfer","pay.Cheque":"Cheque","pay.Online":"Online (Stripe)",
 "s3.notes":"Order notes (optional)","s3.notes.ph":"Anything the production team should know…",
@@ -534,7 +542,10 @@ hi:{ui:{
 "we.photos.hint":"फ़ोटो से बाद में बहुत समझाना बच जाता है — बीम, सॉकेट, स्कर्टिंग, पुराना ट्रैक।",
 "we.fabric":"कपड़ा","we.fab.pick":"🔍 {layer} का कपड़ा चुनें (या बाद में तय करें)",
 "we.fab.set":"✓ {code} — रोल चौड़ाई {w} cm",
-"we.fab.need":"🧵 <b>कितना कपड़ा लगेगा (1 m सेफ़्टी सहित):</b>",
+"we.fab.need":"🧵 <b>कितना कपड़ा लगेगा:</b>",
+"fab.str":"सीधा कट, {f}","fab.lead":"लेड बैंड","fab.hem":"हेम","fab.inv":"उल्टा कट: {n} पैनल × {l} m",
+"we.finish":"शीयर का नीचे का फ़िनिश","fin.lead":"लेड बैंड","fin.hem":"हेम (सिलाई)",
+"we.finish.hint":"लेड बैंड हो तो रोल परदे से कम से कम 14 cm ऊँचा होने पर शीयर एक ही पीस में बनता है; हेम के लिए 30 cm चाहिए — वरना पैनल में कटेगा (ज़्यादा कपड़ा)।",
 "we.fab.none":"(कपड़ा तय नहीं — {n} cm माना गया)","we.fab.roll2":"रोल {n} cm","we.fab.assumed":" माना गया",
 "acc.addons":"➕ इस विंडो के एड-ऑन","acc.site":"🏠 साइट की जानकारी (ज़रूरी नहीं)","acc.finish":"🧷 फ़िनिशिंग की जानकारी (ज़रूरी नहीं)",
 "acc.added":"{n} लगे","acc.set":"{n} भरे",
@@ -558,7 +569,7 @@ hi:{ui:{
 "s3.inst":"इंस्टॉलेशन","s3.loc":"लोकेशन","s3.gps":"✓ GPS सेव है",
 "s3.windows":"🪟 विंडो ({n})","s3.disc":"डिस्काउंट {p}% (अपने आप)",
 "s3.nudge":"💡 {amt} और जोड़ें तो <b>{p}% डिस्काउंट</b> मिलेगा।",
-"s3.fabric":"🧵 कितना कपड़ा लगेगा (हर एक में 1 m सेफ़्टी सहित)","s3.nofabric":"इस ऑर्डर में कपड़े वाला कोई प्रोडक्ट नहीं",
+"s3.fabric":"🧵 कितना कपड़ा लगेगा","s3.nofabric":"इस ऑर्डर में कपड़े वाला कोई प्रोडक्ट नहीं",
 "s3.adv":"एडवांस मिला (AED, ज़रूरी नहीं)","s3.pay":"पेमेंट का तरीक़ा",
 "pay.Cash":"कैश","pay.Card":"कार्ड","pay.Bank Transfer":"बैंक ट्रांसफ़र","pay.Cheque":"चेक","pay.Online":"ऑनलाइन (Stripe)",
 "s3.notes":"ऑर्डर के नोट (ज़रूरी नहीं)","s3.notes.ph":"प्रोडक्शन टीम को कुछ बताना हो तो…",
@@ -675,7 +686,10 @@ bn:{ui:{
 "we.photos.hint":"ছবি থাকলে পরে অনেক বোঝানো বেঁচে যায় — বিম, সকেট, স্কার্টিং, পুরনো ট্র্যাক।",
 "we.fabric":"কাপড়","we.fab.pick":"🔍 {layer} কাপড় বেছে নিন (বা পরে ঠিক করুন)",
 "we.fab.set":"✓ {code} — রোল চওড়া {w} cm",
-"we.fab.need":"🧵 <b>কত কাপড় লাগবে (1 m সেফটি সহ):</b>",
+"we.fab.need":"🧵 <b>কত কাপড় লাগবে:</b>",
+"fab.str":"সোজা কাট, {f}","fab.lead":"লেড ব্যান্ড","fab.hem":"হেম","fab.inv":"উল্টো কাট: {n} প্যানেল × {l} m",
+"we.finish":"শিয়ারের নিচের ফিনিশ","fin.lead":"লেড ব্যান্ড","fin.hem":"হেম (সেলাই)",
+"we.finish.hint":"লেড ব্যান্ড থাকলে রোল পর্দার চেয়ে অন্তত 14 cm বড় হলে শিয়ার এক টুকরোয় হয়; হেমের জন্য 30 cm লাগে — না হলে প্যানেলে কাটতে হবে (বেশি কাপড়)।",
 "we.fab.none":"(কাপড় ঠিক হয়নি — {n} cm ধরা হয়েছে)","we.fab.roll2":"রোল {n} cm","we.fab.assumed":" ধরা হয়েছে",
 "acc.addons":"➕ এই জানালার অ্যাড-অন","acc.site":"🏠 সাইটের তথ্য (ঐচ্ছিক)","acc.finish":"🧷 ফিনিশিং তথ্য (ঐচ্ছিক)",
 "acc.added":"{n} যোগ হয়েছে","acc.set":"{n} দেওয়া আছে",
@@ -699,7 +713,7 @@ bn:{ui:{
 "s3.inst":"ইনস্টলেশন","s3.loc":"লোকেশন","s3.gps":"✓ GPS সেভ আছে",
 "s3.windows":"🪟 জানালা ({n})","s3.disc":"ডিসকাউন্ট {p}% (অটো)",
 "s3.nudge":"💡 আর {amt} যোগ করলে <b>{p}% ডিসকাউন্ট</b> পাবেন।",
-"s3.fabric":"🧵 কত কাপড় লাগবে (প্রতিটিতে 1 m সেফটি সহ)","s3.nofabric":"এই অর্ডারে কাপড়ের কোনো প্রোডাক্ট নেই",
+"s3.fabric":"🧵 কত কাপড় লাগবে","s3.nofabric":"এই অর্ডারে কাপড়ের কোনো প্রোডাক্ট নেই",
 "s3.adv":"অ্যাডভান্স পেয়েছেন (AED, ঐচ্ছিক)","s3.pay":"পেমেন্টের ধরন",
 "pay.Cash":"ক্যাশ","pay.Card":"কার্ড","pay.Bank Transfer":"ব্যাংক ট্রান্সফার","pay.Cheque":"চেক","pay.Online":"অনলাইন (Stripe)",
 "s3.notes":"অর্ডারের নোট (ঐচ্ছিক)","s3.notes.ph":"প্রোডাকশন টিমকে কিছু জানানোর থাকলে…",
@@ -914,23 +928,33 @@ function layersForStyle(style){
 function rollWidthOf(code){ if(!code) return null;
   const f = FABRICS.find(x=>x.c===code); return f && f.w ? f.w : null; }
 
-// Fabric needed for ONE layer of a window (metres). Mirrors production panel-plan logic:
-// railroaded when roll width > fabric height + 22cm; else vertical panels of (height+22cm).
-// +16cm sewing allowance on gathered width, +1m safety always added.
-function fabricMeters(style, widthCm, heightCm, poolingCm, rollCm, fullnessOverride){
-  if(!widthCm || !heightCm) return 0;
-  const mult = (+fullnessOverride > 0) ? +fullnessOverride : (FULLNESS[style] ?? 2.2);
+// Fabric for ONE layer of a window (user method, 19 Nov 2026). Same maths as SQL fabric_plan().
+//  adjusted height H = height + pooling/dragging (negative when above the floor)
+//  STRAIGHT (roll width runs top to bottom, one continuous piece) is possible when
+//    H < roll − 14 cm with a lead band (sheers only), or H < roll − 30 cm when hemmed
+//    → metres = width × gathering
+//  otherwise INVERTED (vertical panels, lead band impossible → hemmed)
+//    → panels = ceil(width × gathering ÷ roll), each panel H + 30 cm
+//  total rounded UP to the next 0.5 m. Roll width comes from the fabrics table (280 cm if none chosen).
+function fabricPlan(style, layer, widthCm, heightCm, poolingCm, rollCm, fullnessOverride, finish){
+  if(!(widthCm>0) || !(heightCm>0)) return null;
+  const mult = (+fullnessOverride > 0) ? +fullnessOverride : (FULLNESS[style] ?? 2.1);
   const roll = rollCm || DEFAULT_ROLL_CM;
-  const hFab = Math.max(heightCm + (poolingCm||0), 30);
-  const gatheredW = widthCm * mult;
-  let m;
-  if(roll > hFab + 22){ m = (gatheredW + 16)/100; }
-  else{ const panels = Math.ceil((gatheredW + 16)/roll); m = panels * (hFab + 22)/100; }
-  return Math.ceil((m + SAFETY_M)*10)/10;   // round UP to 0.1 m
+  const h = Math.max(heightCm + (poolingCm||0), 30);
+  const g = widthCm * mult;
+  const lead = layer==="sheer" && style!=="roman" && finish!=="hem";
+  let m, method, panels = null, panelLen = null;
+  if(h < roll - (lead ? LEAD_MARGIN_CM : HEM_MARGIN_CM)){ method = "straight"; m = g/100; }
+  else { method = "inverted"; panels = Math.ceil(+(g/roll).toFixed(6));
+         panelLen = r2((h + PANEL_ALLOW_CM)/100); m = panels*(h + PANEL_ALLOW_CM)/100; }
+  m = Math.ceil(+(m/FAB_ROUND_M).toFixed(6)) * FAB_ROUND_M;
+  return {meters:+m.toFixed(1), method, panels, panelLen, roll,
+          finish: lead && method==="straight" ? "lead" : "hem"};
 }
+const hasSheerLayer = w => w.style!=="roman" && (w.layer==="sheer" || w.layer==="sheer_blackout");
 
 function windowFabrics(w){
-  // returns [{layer:'sheer'|'blackout', code, roll, meters}]
+  // returns [{layer:'sheer'|'blackout', code, roll, meters, method, panels, panelLen, finish}]
   const p = productFor(w.style, w.layer); if(!p || !p.uses_fabric) return [];
   const out = [];
   const need = (w.style==="roman") ? [w.layer] :
@@ -938,10 +962,17 @@ function windowFabrics(w){
   for(const lay of need){
     const code = lay==="sheer" ? w.fabric_sheer : w.fabric_blackout;
     const roll = rollWidthOf(code);
-    out.push({layer:lay, code:code||null, roll:roll,
-      meters: fabricMeters(w.style, +w.width_cm, +w.height_cm, +w.pooling_cm||0, roll, w.fullness_override)});
+    const plan = fabricPlan(w.style, lay, +w.width_cm, +w.height_cm, +w.pooling_cm||0, roll, w.fullness_override, w.bottom_finish);
+    out.push({layer:lay, code:code||null, roll:roll, meters: plan ? plan.meters : 0,
+      method: plan && plan.method, panels: plan && plan.panels, panelLen: plan && plan.panelLen, finish: plan && plan.finish});
   }
   return out;
+}
+// "straight cut, lead band" / "inverted: 3 panels × 3.1 m"
+function cutText(f){
+  if(!f.method) return "";
+  return f.method==="straight" ? tr("fab.str",{f:tr(f.finish==="lead"?"fab.lead":"fab.hem")})
+                               : tr("fab.inv",{n:f.panels, l:f.panelLen});
 }
 
 function priceProduct(p, widthCm, heightCm){
@@ -1185,7 +1216,7 @@ function renderStep2(){
     const p = windowPrice(w);
     const meta = STYLE_META[w.style]||{nm:w.style};
     const fabs = windowFabrics(w);
-    const fabtxt = fabs.map(f=>`${tr(f.layer==="sheer"?"sheer":"blackout")}: ${f.code?esc(f.code):tr("tbd")} → <b>${f.meters} m</b>`).join("<br>");
+    const fabtxt = fabs.map(f=>`${tr(f.layer==="sheer"?"sheer":"blackout")}: ${f.code?esc(f.code):tr("tbd")} → <b>${f.meters} m</b> · ${cutText(f)}`).join("<br>");
     html += `<div class="wincard">
       <div class="top"><div class="nm">${esc(w.window_name||("W"+(i+1)))} · ${esc(tv(w.room||""))}</div>
         <div class="pill">${esc(meta.nm)}</div></div>
@@ -1239,6 +1270,7 @@ function blankWin(){
     measured_by:"", centre_overlap_cm:0, photos:[],
     // quote extras (19 Nov 2026)
     scaffolding:false, motor_type:"",
+    bottom_finish:"lead",              // sheer bottom: "lead" band or "hem" — decides straight vs panel cut
     fabric_name:"", fabric_pref_1:"", fabric_pref_2:"", fabric_pref_3:"",
     // site details (optional)
     ceiling_material:"", skirting_height_cm:"", pocket_depth_cm:"", window_shape:"",
@@ -1343,7 +1375,7 @@ function fabEstHtml(w){
   const fabs = windowFabrics(w);
   if(!fabs.length || !w.width_cm || !w.height_cm) return "";
   return `<div class="estbox">${tr("we.fab.need")}<br>` +
-    fabs.map(f=>`${tr(f.layer==="sheer"?"sheer":"blackout")}: <b>${f.meters} m</b> ${f.code
+    fabs.map(f=>`${tr(f.layer==="sheer"?"sheer":"blackout")}: <b>${f.meters} m</b> — ${cutText(f)} ${f.code
       ? "("+esc(f.code)+", "+tr("we.fab.roll2",{n:(f.roll||DEFAULT_ROLL_CM)})+(f.roll?"":tr("we.fab.assumed"))+")"
       : tr("we.fab.none",{n:DEFAULT_ROLL_CM})}`).join("<br>") + `</div>`;
 }
@@ -1569,6 +1601,13 @@ function drawWinEditor(){
       <div class="bd">
         ${usesFabric ? need.filter(Boolean).map(l=>`<div style="margin:12px 0 0">${fabBtn(l)}</div>`).join("") +
           `<div id="w_fabest">${fabEstHtml(w)}</div>` : ""}
+        ${usesFabric && hasSheerLayer(w) ? `
+        <label class="f">${tr("we.finish")}</label>
+        <div class="seg" id="w_finish">
+          <button data-bf="lead" class="${w.bottom_finish!=="hem"?"on":""}">${tr("fin.lead")}</button>
+          <button data-bf="hem" class="${w.bottom_finish==="hem"?"on":""}">${tr("fin.hem")}</button>
+        </div>
+        <div class="hint">${tr("we.finish.hint")}</div>` : ""}
         <label class="f">${tr("we.fabname")}</label>
         <input type="text" id="w_fabname" placeholder="${tr("we.fabname.ph")}" value="${esc(w.fabric_name||"")}">
         <label class="f">${tr("we.fabpref")}</label>
@@ -1800,6 +1839,8 @@ function drawWinEditor(){
   ["w_bw","w_bh","w_lx","w_rx","w_tx","w_hl","w_hm","w_hr","w_poolcm"].forEach(id=>{
     const e = $("#"+id); if(e) e.addEventListener("input", refreshLive); });
   const wfu = $("#w_full"); if(wfu) wfu.addEventListener("change", redraw);
+  const wbf = $("#w_finish"); if(wbf) wbf.querySelectorAll("button").forEach(b=>b.onclick=()=>{
+    grab(); w.bottom_finish = b.dataset.bf; drawWinEditor(); });
 
   const save = next=>{
     grab();
@@ -1905,7 +1946,8 @@ function windowPayload(w){
     fabric_name: String(w.fabric_name||"").trim() || null,
     fabric_pref_1: String(w.fabric_pref_1||"").trim() || null,
     fabric_pref_2: String(w.fabric_pref_2||"").trim() || null,
-    fabric_pref_3: String(w.fabric_pref_3||"").trim() || null
+    fabric_pref_3: String(w.fabric_pref_3||"").trim() || null,
+    bottom_finish: hasSheerLayer(w) ? (w.bottom_finish==="hem" ? "hem" : "lead") : null
   };
 }
 function orderPayload(){
