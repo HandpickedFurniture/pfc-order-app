@@ -28,6 +28,8 @@
   header{background:#fff;color:var(--txt);padding:10px 14px;position:sticky;top:0;z-index:50;
     display:flex;align-items:center;gap:12px;border-bottom:3px solid #b07150;}
   header .logo{height:36px;width:auto;display:block;flex:none;}
+  header .home{display:block;flex:none;border-radius:8px;cursor:pointer;}
+  header .home:active{opacity:.6;}
   header .t2{margin-left:auto;font-size:12px;color:var(--muted);text-align:right;line-height:1.25;}
   /* language selector — first item in the header, top left */
   header .langsel{width:auto;flex:none;padding:7px 26px 7px 9px;font-size:14px;font-weight:700;
@@ -257,7 +259,7 @@
     <option value="hi">हिं</option>
     <option value="bn">বাং</option>
   </select>
-  <img class="logo" id="hdr_logo" alt="Handpicked Interiors">
+  <a class="home" id="hdr_home" href="./" aria-label="Home"><img class="logo" id="hdr_logo" alt="Handpicked Interiors"></a>
   <div class="t2" id="hdr_sub">Sales Order App</div>
 </header>
 
@@ -2283,6 +2285,16 @@ function newOrder(){
 }
 
 $("#langsel").onchange = e=>setLang(e.target.value);
+// Logo = home: back to the first screen (Customer). The order in progress is kept as it is;
+// after "Order confirmed" it starts a fresh order instead.
+$("#hdr_home").onclick = e=>{
+  e.preventDefault();
+  if($("#stepdots").style.display==="none"){ newOrder(); return; }
+  if(state.step===1){ window.scrollTo(0,0); return; }   // a redraw would drop what is typed there
+  if(state.step===3) grabStep3();
+  closeOverlay(); if($("#fab_root")) $("#fab_root").remove();
+  state.step = 1; render(); window.scrollTo(0,0);
+};
 paintChrome();
 bootstrap();
 </script>
