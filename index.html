@@ -292,7 +292,7 @@ const FULLNESS = {wave:2.3, american:2.1, eyelet:2.1, ring:2.1, roman:1.0};
 const LEAD_MARGIN_CM = 14;           // straight cut with lead band: height < roll − 14 (top tape)
 const HEM_MARGIN_CM  = 30;           // straight cut, hemmed: height < roll − 30 (16 hem + 14 tape)
 const PANEL_ALLOW_CM = 30;           // inverted cut: each panel = adjusted height + 30
-const FAB_ROUND_M    = 0.5;          // fabric quantity rounded UP to the next 0.5 m
+const FAB_ROUND_M    = 1;            // fabric quantity rounded UP to whole metres (user, 20 Nov 2026)
 const STYLE_META = {
   american:{nm:"American Style", ic:"🪡", cat:"curtain"},
   wave:{nm:"Wave Style", ic:"🌊", cat:"curtain"},
@@ -935,7 +935,7 @@ function rollWidthOf(code){ if(!code) return null;
 //    → metres = width × gathering
 //  otherwise INVERTED (vertical panels, lead band impossible → hemmed)
 //    → panels = ceil(width × gathering ÷ roll), each panel H + 30 cm
-//  total rounded UP to the next 0.5 m. Roll width comes from the fabrics table (280 cm if none chosen).
+//  total rounded UP to whole metres. Roll width comes from the fabrics table (280 cm if none chosen).
 function fabricPlan(style, layer, widthCm, heightCm, poolingCm, rollCm, fullnessOverride, finish){
   if(!(widthCm>0) || !(heightCm>0)) return null;
   const mult = (+fullnessOverride > 0) ? +fullnessOverride : (FULLNESS[style] ?? 2.1);
