@@ -99,6 +99,18 @@
   .picked .nm{font-weight:800;font-size:16px;}
   .picked .pr{font-size:12.5px;color:var(--muted);margin-top:2px;}
   .picked .btn.small{padding:9px 12px;font-size:14px;}
+  /* swipe strip: swipe (or tap ‹ ›) to step through the products. pan-y keeps page scrolling with the browser */
+  .swipe{display:flex;align-items:center;gap:6px;touch-action:pan-y;user-select:none;-webkit-user-select:none;}
+  .swipe .picked{flex:1;min-width:0;gap:10px;cursor:grab;}
+  .swb{flex:none;width:36px;height:56px;border-radius:10px;border:1.5px solid var(--line);background:#fff;
+    font-size:28px;line-height:1;color:var(--brand);cursor:pointer;padding:0 0 3px;}
+  .swb:active{background:#fdf1e8;border-color:var(--accent);}
+  .swdots{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px;}
+  .swdots i{width:6px;height:6px;border-radius:3px;background:#d3dde1;}
+  .swdots i.on{width:14px;background:var(--accent);}
+  .swfoot{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:8px;
+    font-size:12.5px;color:var(--muted);}
+  .swfoot .btn.small{padding:8px 12px;font-size:14px;flex:none;}
 
   /* live price box under width / height */
   .quote{background:#fdf1e8;border:1.5px solid #f3c9a6;border-radius:12px;padding:12px 14px;margin-top:12px;}
@@ -151,6 +163,21 @@
   .wincard .acts button{flex:1;padding:10px;border-radius:10px;border:1.5px solid var(--line);
     background:#fff;font-size:14.5px;font-weight:600;cursor:pointer;}
   .wincard .acts .del{color:var(--danger);border-color:#eecfca;}
+  /* quick edits on the window card: product swipe, size, layers, opening */
+  .wincard .top .price{margin-top:0;flex:none;margin-left:8px;}
+  .wincard .top .nm{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .wincard .swipe{margin-top:10px;background:#f6f9fa;border-radius:12px;padding:6px;}
+  .wincard .swb{height:48px;width:34px;}
+  .wincard .picked .pim{width:72px;height:54px;}
+  .wincard .picked .ic{width:72px;font-size:28px;}
+  .wincard .picked .nm{font-size:15px;}
+  .wincard .qsize{display:flex;gap:10px;margin-top:10px;}
+  .wincard .qsize>div{flex:1;min-width:0;}
+  .wincard .qsize label{display:block;font-size:12.5px;font-weight:600;color:var(--muted);margin-bottom:4px;}
+  .wincard .qsize input{padding:10px 12px;font-size:16px;}
+  .wincard .qsize .ro{padding:10px 12px;font-size:16px;}
+  .wincard .seg{margin-top:8px;}
+  .seg.sm button{padding:9px 4px;font-size:13.5px;}
 
   /* addon rows */
   .addon{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--line);gap:8px;}
@@ -362,7 +389,8 @@ en:{ui:{
 "layer.sheer":"Sheer only","layer.blackout":"Blackout only","layer.sheer_blackout":"Sheer + Blackout",
 "we.add":"Add Window","we.edit":"Edit Window","we.name":"Window name","we.room":"Room",
 "we.product":"Product","we.layers":"Layers","we.from.m":"from AED {p}/m width","we.from.sqm":"from AED {p}/m²",
-"we.change":"Change","we.width":"Width (cm)",
+"we.change":"Change","we.swipe":"Swipe ← → to change product","we.allprod":"All products","sw.prev":"Previous product","sw.next":"Next product",
+"lay.s.sheer":"Sheer","lay.s.blackout":"Blackout","lay.s.sheer_blackout":"Both","s2.total":"With extras: {w} × {h} cm","s2.uneven":"Uneven heights — change them in ✏️ Edit","we.width":"Width (cm)",
 "we.quick.hint":"Width and height are enough for a price. Add the details below later.",
 "we.hro.hint":"Taken from the left / middle / right heights in the details below.",
 "we.quote":"💰 Price for this window","we.quote.size":"Priced on {w} × {h} cm",
@@ -496,7 +524,8 @@ hi:{ui:{
 "layer.sheer":"सिर्फ़ शीयर","layer.blackout":"सिर्फ़ ब्लैकआउट","layer.sheer_blackout":"शीयर + ब्लैकआउट",
 "we.add":"विंडो जोड़ें","we.edit":"विंडो बदलें","we.name":"विंडो का नाम","we.room":"कमरा",
 "we.product":"प्रोडक्ट","we.layers":"लेयर","we.from.m":"AED {p}/m चौड़ाई से","we.from.sqm":"AED {p}/m² से",
-"we.change":"बदलें","we.width":"चौड़ाई (cm)",
+"we.change":"बदलें","we.swipe":"प्रोडक्ट बदलने के लिए ← → स्वाइप करें","we.allprod":"सभी प्रोडक्ट","sw.prev":"पिछला प्रोडक्ट","sw.next":"अगला प्रोडक्ट",
+"lay.s.sheer":"शीयर","lay.s.blackout":"ब्लैकआउट","lay.s.sheer_blackout":"दोनों","s2.total":"एक्स्ट्रा के साथ: {w} × {h} cm","s2.uneven":"ऊँचाई बराबर नहीं — ✏️ बदलें में ठीक करें","we.width":"चौड़ाई (cm)",
 "we.quick.hint":"दाम के लिए सिर्फ़ चौड़ाई और ऊँचाई काफ़ी है। बाकी जानकारी नीचे बाद में भरें।",
 "we.hro.hint":"नीचे दी गई बाएँ / बीच / दाएँ ऊँचाई से लिया गया।",
 "we.quote":"💰 इस विंडो का दाम","we.quote.size":"{w} × {h} cm पर दाम",
@@ -640,7 +669,8 @@ bn:{ui:{
 "layer.sheer":"শুধু শিয়ার","layer.blackout":"শুধু ব্ল্যাকআউট","layer.sheer_blackout":"শিয়ার + ব্ল্যাকআউট",
 "we.add":"জানালা যোগ করুন","we.edit":"জানালা এডিট","we.name":"জানালার নাম","we.room":"রুম",
 "we.product":"প্রোডাক্ট","we.layers":"লেয়ার","we.from.m":"AED {p}/m চওড়া থেকে","we.from.sqm":"AED {p}/m² থেকে",
-"we.change":"বদলান","we.width":"চওড়া (cm)",
+"we.change":"বদলান","we.swipe":"প্রোডাক্ট বদলাতে ← → সোয়াইপ করুন","we.allprod":"সব প্রোডাক্ট","sw.prev":"আগের প্রোডাক্ট","sw.next":"পরের প্রোডাক্ট",
+"lay.s.sheer":"শিয়ার","lay.s.blackout":"ব্ল্যাকআউট","lay.s.sheer_blackout":"দুটোই","s2.total":"এক্সট্রা সহ: {w} × {h} cm","s2.uneven":"উচ্চতা সমান নয় — ✏️ এডিট-এ বদলান","we.width":"চওড়া (cm)",
 "we.quick.hint":"দামের জন্য শুধু চওড়া আর উচ্চতাই যথেষ্ট। বাকি তথ্য নিচে পরে দিন।",
 "we.hro.hint":"নিচের বাম / মাঝ / ডান উচ্চতা থেকে নেওয়া।",
 "we.quote":"💰 এই জানালার দাম","we.quote.size":"{w} × {h} cm ধরে দাম",
@@ -922,6 +952,72 @@ function availableStyles(){
 }
 function layersForStyle(style){
   return CATALOG.filter(p=>p.category==="curtain" && p.style===style).map(p=>p.layer_type);
+}
+// Change a window's product. Keeps the layer when the new product has it, else takes its first
+// layer; blinds have none. "Inside frame" only exists for blinds / roman. Used by the product
+// grid, the swipe strip in the editor and the step-2 cards, so all three behave the same.
+function setStyle(w, s){
+  w.style = s;
+  const blind = STYLE_META[s]?.cat==="blind";
+  const lo = layersForStyle(s);
+  if(blind) w.layer = null;
+  else if(!lo.includes(w.layer)) w.layer = lo[0]||"";
+  if(w.coverage==="inside_frame" && !(blind || s==="roman")) w.coverage = "wall_to_wall";
+  applyGeometry(w);
+}
+// next (+1) / previous (−1) product in catalogue order, wrapping round at the ends
+function stepStyle(s, dir){
+  const list = availableStyles(); if(!list.length) return s;
+  const i = Math.max(0, list.indexOf(s));
+  return list[(i + dir + list.length) % list.length];
+}
+// Product strip: ‹ photo · name · dots › — swipe or tap the arrows. idAttr names the strip.
+function swipeStripHtml(s, idAttr){
+  const list = availableStyles(), at = list.indexOf(s);
+  return `<div class="swipe" ${idAttr}>
+    <button class="swb" data-sd="-1" aria-label="${tr("sw.prev")}">‹</button>
+    <div class="picked">${productPic(s,"pim")}
+      <div class="l"><div class="nm">${esc((STYLE_META[s]||{}).nm||s)}</div>
+      <div class="pr">${fromText(s)}</div>
+      <div class="swdots">${list.map((_,k)=>`<i class="${k===at?"on":""}"></i>`).join("")}</div></div></div>
+    <button class="swb" data-sd="1" aria-label="${tr("sw.next")}">›</button></div>`;
+}
+// Swipe on a strip with a finger or a mouse drag. The strip follows the pointer; past 45 px
+// it calls go(+1) for the next product (swipe left) or go(−1) for the previous (swipe right).
+// The ‹ › buttons call go() on tap. Vertical drags are left to the browser (touch-action:pan-y).
+function attachSwipe(el, go){
+  if(!el) return;
+  el.querySelectorAll("[data-sd]").forEach(b=>b.onclick = ()=>go(+b.dataset.sd));
+  let x0 = null, y0 = 0, dx = 0, pid = null, moved = false;
+  const reset = ()=>{ x0 = null; el.style.transition = "transform .15s ease"; el.style.transform = ""; };
+  el.addEventListener("pointerdown", e=>{
+    if(e.target.closest("button,input") || (e.pointerType==="mouse" && e.button!==0)) return;
+    x0 = e.clientX; y0 = e.clientY; dx = 0; moved = false; pid = e.pointerId;
+    el.style.transition = "none";
+  });
+  el.addEventListener("pointermove", e=>{
+    if(x0===null || e.pointerId!==pid) return;
+    dx = e.clientX - x0;
+    if(!moved && Math.abs(dx) > 8 && Math.abs(dx) > Math.abs(e.clientY - y0)){
+      moved = true; try{ el.setPointerCapture(pid); }catch(_){}
+    }
+    if(moved) el.style.transform = `translateX(${dx*0.7}px)`;
+  });
+  el.addEventListener("pointerup", e=>{
+    if(x0===null || e.pointerId!==pid) return;
+    if(moved && Math.abs(dx) > 45){
+      const dir = dx < 0 ? 1 : -1;
+      x0 = null; el.style.transition = "transform .1s ease, opacity .1s ease";
+      el.style.transform = `translateX(${-dir*90}px)`; el.style.opacity = "0";
+      setTimeout(()=>go(dir), 100);
+    } else reset();
+  });
+  el.addEventListener("pointercancel", e=>{ if(e.pointerId===pid) reset(); });
+}
+// the redrawn strip slides in from the side the finger moved towards
+function slideIn(el, dir){
+  if(el && el.animate) el.animate([{transform:`translateX(${dir*70}px)`, opacity:0}, {transform:"none", opacity:1}],
+    {duration:170, easing:"ease-out"});
 }
 
 /* ================= CALCULATIONS ================= */
@@ -1216,20 +1312,28 @@ function renderStep2(){
       ${tr("s2.empty")}</div>`;
   }
   state.windows.forEach((w,i)=>{
-    const p = windowPrice(w);
-    const meta = STYLE_META[w.style]||{nm:w.style};
-    const fabs = windowFabrics(w);
-    const fabtxt = fabs.map(f=>`${tr(f.layer==="sheer"?"sheer":"blackout")}: ${f.code?esc(f.code):tr("tbd")} → <b>${f.meters} m</b> · ${cutText(f)}`).join("<br>");
-    html += `<div class="wincard">
-      <div class="top"><div class="nm">${esc(w.window_name||("W"+(i+1)))} · ${esc(tv(w.room||""))}</div>
-        <div class="pill">${esc(meta.nm)}</div></div>
-      <div class="det">${w.width_cm}×${w.height_cm} cm · ${esc(layerName(w.layer))}
-        ${w.fixing?" · "+esc(tv(w.fixing)):""}${p.list.length?" · "+tr("s2.addons",{n:p.list.length}):""}
-        ${coverageNote(w)?"<br>"+coverageNote(w):""}
-        ${(w.photos||[]).length?" · 📷 "+w.photos.length:""}
-        ${fabricNote(w)?"<br>🎨 "+fabricNote(w):""}
-        ${fabtxt?"<br>"+fabtxt:""}</div>
-      <div class="price">${fmt(p.total)}</div>
+    normalizeWin(w); applyGeometry(w);
+    const meta = STYLE_META[w.style]||{};
+    const curtain = meta.cat==="curtain" && w.style!=="roman";
+    const layers = meta.cat==="blind" ? [] : layersForStyle(w.style);
+    // quick edits: swipe the product, type the size, tap layers / opening. Everything else → ✏️ Edit
+    html += `<div class="wincard" data-wi="${i}">
+      <div class="top"><div class="nm">${esc(w.window_name||("W"+(i+1)))}${w.room?" · "+esc(tv(w.room)):""}</div>
+        <div class="price" data-wp>${fmt(windowPrice(w).total)}</div></div>
+      ${swipeStripHtml(w.style, `data-sw="${i}"`)}
+      <div class="qsize">
+        <div><label>${tr("we.width")}</label>
+          <input type="number" inputmode="decimal" data-qw="${i}" value="${w.base_width_cm}"></div>
+        <div><label>${tr("we.height")}</label>
+          ${w.uneven ? `<div class="ro">${w.base_height_cm||"—"}</div>`
+            : `<input type="number" inputmode="decimal" data-qh="${i}" value="${w.base_height_cm}">`}</div>
+      </div>
+      ${w.uneven ? `<div class="hint">${tr("s2.uneven")}</div>` : ""}
+      ${layers.length>1 ? `<div class="seg sm">${layers.map(l=>
+        `<button data-ql="${i}|${l}" class="${w.layer===l?"on":""}">${tr("lay.s."+l)}</button>`).join("")}</div>` : ""}
+      ${curtain||w.style==="roman" ? `<div class="seg sm">${OPENINGS.map(o=>
+        `<button data-qo="${i}|${o.v}" class="${w.opening===o.v?"on":""}">${tr(o.k)}</button>`).join("")}</div>` : ""}
+      <div class="det" data-wd>${s2DetHtml(w)}</div>
       <div class="acts">
         <button data-i="${i}" class="ed">${tr("s2.edit")}</button>
         <button data-i="${i}" class="cp">${tr("s2.copy")}</button>
@@ -1241,6 +1345,46 @@ function renderStep2(){
   <div style="height:8px"></div>
   <button class="btn ghost" id="s2back">${tr("s2.back")}</button>`;
   m.innerHTML = html;
+
+  // --- quick edits on the cards ---
+  const card = i => m.querySelector(`.wincard[data-wi="${i}"]`);
+  // typing a size: update this card's price + fabric line and the total bar in place
+  // (no redraw, so the keyboard stays up and the cursor stays put)
+  const liveSize = (inp, field)=>{
+    const i = +inp.dataset[field==="base_width_cm"?"qw":"qh"], w = state.windows[i];
+    inp.dataset.was = inp.dataset.was ?? w[field];
+    w[field] = inp.value; applyGeometry(w);
+    const c = card(i);
+    c.querySelector("[data-wp]").textContent = fmt(windowPrice(w).total);
+    c.querySelector("[data-wd]").innerHTML = s2DetHtml(w);
+    s2Bar(); saveDraft();
+  };
+  // leaving the box empty or 0 puts the old size back — a window always has a size
+  const checkSize = (inp, field)=>{
+    const i = +inp.dataset[field==="base_width_cm"?"qw":"qh"], w = state.windows[i];
+    if(!(+inp.value > 0)){
+      toast(tr("t.need.wh")); inp.value = inp.dataset.was ?? ""; liveSize(inp, field);
+    }
+    delete inp.dataset.was;
+  };
+  m.querySelectorAll("[data-qw]").forEach(e=>{
+    e.addEventListener("input", ()=>liveSize(e,"base_width_cm"));
+    e.addEventListener("change", ()=>checkSize(e,"base_width_cm")); });
+  m.querySelectorAll("[data-qh]").forEach(e=>{
+    e.addEventListener("input", ()=>liveSize(e,"base_height_cm"));
+    e.addEventListener("change", ()=>checkSize(e,"base_height_cm")); });
+  m.querySelectorAll("[data-ql]").forEach(b=>b.onclick = ()=>{
+    const [i, l] = b.dataset.ql.split("|"); state.windows[+i].layer = l; render(); });
+  // opening: tap the chosen one again to clear it (same as the editor)
+  m.querySelectorAll("[data-qo]").forEach(b=>b.onclick = ()=>{
+    const [i, v] = b.dataset.qo.split("|"), w = state.windows[+i];
+    w.opening = w.opening===v ? "" : v; render(); });
+  m.querySelectorAll("[data-sw]").forEach(el=>{
+    const i = +el.dataset.sw;
+    attachSwipe(el, dir=>{
+      const w = state.windows[i]; setStyle(w, stepStyle(w.style, dir)); render();
+      slideIn(m.querySelector(`[data-sw="${i}"] .picked`), dir); });
+  });
 
   m.querySelectorAll(".ed").forEach(b=>b.onclick = ()=> openWinEditor(+b.dataset.i));
   m.querySelectorAll(".cp").forEach(b=>b.onclick = ()=>{
@@ -1254,10 +1398,29 @@ function renderStep2(){
     openWinEditor(-1, last ? {style:last.style, layer:last.layer} : null); };
   $("#s2back").onclick = ()=>{ state.step=1; render(); };
 
+  s2Bar();
+}
+function s2Bar(){
   totbar(true, state.windows.length ? tr("s2.review") : tr("s2.addfirst"), ()=>{
     if(!state.windows.length){ toast(tr("t.need.window")); return; }
     state.step=3; render(); window.scrollTo(0,0);
   });
+}
+// the card's read-only lines: total size when extras are added, fixing, add-ons, photos, fabric
+function s2DetHtml(w){
+  const p = windowPrice(w);
+  const fabtxt = windowFabrics(w).map(f=>`${tr(f.layer==="sheer"?"sheer":"blackout")}: ${f.code?esc(f.code):tr("tbd")} → <b>${f.meters} m</b> · ${cutText(f)}`).join("<br>");
+  const extra = (+w.width_cm!==+w.base_width_cm || +w.height_cm!==+w.base_height_cm) && w.width_cm && w.height_cm;
+  const bits = [];
+  // the layer buttons only show when there is a choice — otherwise name the layer here
+  const lo = STYLE_META[w.style]?.cat==="blind" ? [] : layersForStyle(w.style);
+  if(lo.length===1 && w.layer) bits.push(esc(layerName(w.layer)));
+  if(extra) bits.push(tr("s2.total",{w:w.width_cm, h:w.height_cm}));
+  if(w.fixing) bits.push(esc(tv(w.fixing)));
+  if(p.list.length) bits.push(tr("s2.addons",{n:p.list.length}));
+  if((w.photos||[]).length) bits.push("📷 "+w.photos.length);
+  return [bits.join(" · "), coverageNote(w), fabricNote(w)?"🎨 "+fabricNote(w):"", fabtxt]
+    .filter(Boolean).join("<br>");
 }
 
 /* ---------- window editor overlay ---------- */
@@ -1422,10 +1585,10 @@ function drawWinEditor(){
       <div class="nm">${esc(sm.nm||s)}</div>
       <div class="pr">${fromText(s)}</div></div>`;
   }).join("");
-  const picked = w.style ? `<div class="picked">${productPic(w.style,"pim")}
-      <div class="l"><div class="nm">${esc((STYLE_META[w.style]||{}).nm||w.style)}</div>
-      <div class="pr">${fromText(w.style)}</div></div>
-      <button class="btn ghost small" id="w_change">${tr("we.change")}</button></div>` : "";
+  // picked product = swipe strip; "All products" re-opens the photo grid
+  const picked = w.style ? swipeStripHtml(w.style, `id="w_swipe"`) +
+    `<div class="swfoot"><span>${tr("we.swipe")}</span>
+      <button class="btn ghost small" id="w_change">${tr("we.allprod")}</button></div>` : "";
 
   const fabBtn = (lay)=>{
     const code = lay==="sheer" ? w.fabric_sheer : w.fabric_blackout;
@@ -1766,13 +1929,13 @@ function drawWinEditor(){
   $("#ov_x").onclick = ()=>{ closeOverlay(); };
   $("#winov").querySelectorAll("#w_rooms .chip").forEach(c=>c.onclick=()=>{ grab(); w.room = c.dataset.r; drawWinEditor(); });
   $("#winov").querySelectorAll("#w_styles .stylecard").forEach(c=>c.onclick=()=>{
-    grab(); w.style = c.dataset.s;
-    const lo = layersForStyle(w.style);
-    if(STYLE_META[w.style]?.cat==="blind"){ w.layer = null; }
-    else if(!lo.includes(w.layer)) w.layer = lo[0]||"";
+    grab(); setStyle(w, c.dataset.s);
     pickOpen = false;
     drawWinEditor(); });
   const wch = $("#w_change"); if(wch) wch.onclick = ()=>{ grab(); pickOpen = true; drawWinEditor(); };
+  attachSwipe($("#w_swipe"), dir=>{
+    grab(); setStyle(w, stepStyle(w.style, dir)); drawWinEditor();
+    slideIn($("#w_swipe .picked"), dir); });
   const wl = $("#w_layers"); if(wl) wl.querySelectorAll("button").forEach(b=>b.onclick=()=>{ grab(); w.layer=b.dataset.l; drawWinEditor(); });
   const wp = $("#w_pool"); if(wp) wp.querySelectorAll("button").forEach(b=>b.onclick=()=>{
     grab(); const t=+b.dataset.p;
